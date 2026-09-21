@@ -208,6 +208,48 @@ código não confiável de pushes diretos.
 | Parar tudo | `docker compose -p dora down` |
 | Destruir a infra AWS | `cd infra/terraform && terraform destroy` |
 
+## Exportar a tabela `message` para CSV
+
+A tabela `message` (histórico de conversas) fica no container `postgres`,
+sem porta publicada no host — só é acessível pela rede interna do Compose.
+Não há SSH/scp na instância (só SSM), então o jeito mais direto de tirar um
+`.csv` já no seu computador é abrir um túnel via SSM até o container e
+rodar o `psql` localmente.
+
+```bash
+# 1. Dentro da sessão SSM (aws ssm start-session --target <instance_id> ...),
+#    descobrir o IP do container postgres:
+cd /opt/dora
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+  $(docker compose -p dora ps -q postgres)
+# ex: 172.20.0.3
+```
+
+```bash
+# 2. No seu computador (outro terminal), abrir o túnel TCP até o container:
+aws ssm start-session \
+  --target <instance_id> --region <aws_region> \
+  --document-name AWS-StartPortForwardingSessionToRemoteHost \
+  --parameters '{"host":["<ip_do_container>"],"portNumber":["5432"],"localPortNumber":["5432"]}'
+```
+
+```bash
+# 3. Ainda no seu computador, com psql instalado localmente (brew install libpq
+#    ou postgresql), exportar via localhost:5432. A senha é o POSTGRES_PASSWORD
+#    do /opt/dora/.env na instância:
+PGPASSWORD='<POSTGRES_PASSWORD>' psql -h localhost -p 5432 -U dora -d dora \
+  -c "\copy (SELECT * FROM message ORDER BY chat_id, sequence) TO 'message.csv' WITH CSV HEADER"
+```
+
+O arquivo `message.csv` é gravado diretamente na máquina local, sem precisar
+copiar/colar saída de terminal.
+
+Alternativa rápida (sem túnel, só pra espiar poucas linhas): dentro da
+sessão SSM, `docker compose -p dora exec -T postgres psql -U dora -d dora -c
+"\copy (SELECT * FROM message ORDER BY chat_id, sequence) TO STDOUT WITH CSV
+HEADER" > /tmp/message.csv` e depois `cat /tmp/message.csv` para copiar a
+saída manualmente — só vale para volumes pequenos de dados.
+
 ## Fora do escopo deste guia (próximos passos sugeridos)
 
 - **Backups**: snapshots automáticos do volume EBS de dados (`aws_ebs_volume.data`) ou `pg_dump` agendado

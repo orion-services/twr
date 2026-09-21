@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dora</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@13/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
   :root {
     --bg: #0f172a;
@@ -96,6 +98,60 @@
     font-size: 11px;
     color: var(--muted);
     margin-bottom: 4px;
+  }
+  .msg.ai .content > *:first-child {
+    margin-top: 0;
+  }
+  .msg.ai .content > *:last-child {
+    margin-bottom: 0;
+  }
+  .msg.ai .content p {
+    margin: 0 0 8px;
+  }
+  .msg.ai .content ul,
+  .msg.ai .content ol {
+    margin: 0 0 8px;
+    padding-left: 22px;
+  }
+  .msg.ai .content li {
+    margin-bottom: 4px;
+  }
+  .msg.ai .content a {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .msg.ai .content code {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 13px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  .msg.ai .content pre {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 0 0 8px;
+    overflow-x: auto;
+  }
+  .msg.ai .content pre code {
+    background: none;
+    padding: 0;
+  }
+  .msg.ai .content blockquote {
+    margin: 0 0 8px;
+    padding-left: 10px;
+    border-left: 3px solid var(--muted);
+    color: var(--muted);
+  }
+  .msg.ai .content table {
+    border-collapse: collapse;
+    margin: 0 0 8px;
+  }
+  .msg.ai .content th,
+  .msg.ai .content td {
+    border: 1px solid #374151;
+    padding: 4px 8px;
   }
   .typing {
     display: inline-flex;
@@ -404,6 +460,11 @@
       }
     })();
 
+    /** Renders raw markdown text as sanitized HTML, safe to assign to innerHTML. */
+    function renderMarkdown(rawText) {
+      return DOMPurify.sanitize(marked.parse(rawText || ''));
+    }
+
     function addMessage(role, text) {
       const div = document.createElement('div');
       div.className = 'msg ' + role;
@@ -414,7 +475,12 @@
         div.appendChild(label);
       }
       const content = document.createElement('span');
-      content.textContent = text;
+      content.className = 'content';
+      if (role === 'ai') {
+        content.innerHTML = renderMarkdown(text);
+      } else {
+        content.textContent = text;
+      }
       div.appendChild(content);
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -451,6 +517,7 @@
       const aiContent = addMessage('ai', '');
       showTypingIndicator(aiContent);
       let firstChunkReceived = false;
+      let rawAnswer = '';
 
       try {
         const body = new URLSearchParams();
@@ -476,9 +543,10 @@
           await streamPlainText(response, (chunk) => {
             if (!firstChunkReceived) {
               firstChunkReceived = true;
-              aiContent.textContent = '';
+              aiContent.innerHTML = '';
             }
-            aiContent.textContent += chunk;
+            rawAnswer += chunk;
+            aiContent.innerHTML = renderMarkdown(rawAnswer);
             messagesEl.scrollTop = messagesEl.scrollHeight;
           });
         }
