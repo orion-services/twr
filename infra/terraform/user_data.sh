@@ -8,17 +8,23 @@ exec > >(tee -a /var/log/dora-user-data.log) 2>&1
 echo "=== dora user_data starting at $(date -u) ==="
 
 # ------------------------------------------------------------------
-# Docker + Compose plugin
+# Docker + Compose plugin + JDK
 # ------------------------------------------------------------------
 dnf update -y
-dnf install -y docker git
+dnf install -y docker git java-25-amazon-corretto-devel
+# Dockerfile.jvm (src/main/docker/Dockerfile.jvm) only copies the already-built
+# target/quarkus-app/ — it doesn't compile the app itself. `./mvnw package`
+# needs to run on the host first (both for the first manual deploy and for
+# every run of the GitHub Actions self-hosted runner, see deploy.yml), which
+# requires a JDK matching <maven.compiler.release> in pom.xml (currently 25).
 
 systemctl enable --now docker
 usermod -aG docker ec2-user
 
+mkdir -p /usr/libexec/docker/cli-plugins
+ARCH=$(uname -m) # aarch64 on t4g
+
 if [ ! -x /usr/libexec/docker/cli-plugins/docker-compose ]; then
-  mkdir -p /usr/libexec/docker/cli-plugins
-  ARCH=$(uname -m) # aarch64 on t4g
   case "$ARCH" in
     aarch64) COMPOSE_ARCH="aarch64" ;;
     x86_64)  COMPOSE_ARCH="x86_64" ;;
@@ -28,6 +34,22 @@ if [ ! -x /usr/libexec/docker/cli-plugins/docker-compose ]; then
     "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}" \
     -o /usr/libexec/docker/cli-plugins/docker-compose
   chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+fi
+
+# The `docker` package on Amazon Linux 2023 (unlike Docker CE's own repo)
+# doesn't ship a buildx plugin, but `docker compose ... --build` requires
+# buildx >= 0.17.0 under the hood. Install it the same way as compose above.
+if [ ! -x /usr/libexec/docker/cli-plugins/docker-buildx ]; then
+  case "$ARCH" in
+    aarch64) BUILDX_ARCH="arm64" ;;
+    x86_64)  BUILDX_ARCH="amd64" ;;
+    *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
+  esac
+  BUILDX_VERSION=$(curl -fsSL https://api.github.com/repos/docker/buildx/releases/latest | grep -m1 '"tag_name"' | cut -d '"' -f4)
+  curl -fsSL \
+    "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-${BUILDX_ARCH}" \
+    -o /usr/libexec/docker/cli-plugins/docker-buildx
+  chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
 fi
 
 # ------------------------------------------------------------------
@@ -73,7 +95,7 @@ fi
 
 # ------------------------------------------------------------------
 # App directory — the repo gets cloned/copied here manually on first deploy
-# (see docs/DEPLOY-AWS.md). SSM Session Manager is used for shell access.
+# (see docs/aws.md). SSM Session Manager is used for shell access.
 # ------------------------------------------------------------------
 mkdir -p /opt/dora
 chown ec2-user:ec2-user /opt/dora
