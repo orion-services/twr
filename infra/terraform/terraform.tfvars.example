@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and adjust as needed. All variables have sane
+# defaults (see variables.tf) — this file is optional.
+
+# aws_region   = "us-east-1"
+# project_name = "dora"
+# instance_type = "t4g.medium"
+# data_volume_size_gb = 40
+
+# Only set this if you need SSH in addition to (or instead of) SSM Session
+# Manager. Leave commented out to keep the security group closed on port 22.
+# allowed_ssh_cidr_blocks = ["203.0.113.4/32"]

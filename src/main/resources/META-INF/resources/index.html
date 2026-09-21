@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dora</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #111827;
+    --bubble-user: #2563eb;
+    --bubble-ai: #1f2937;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .mode-toggle {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .mode-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .mode-toggle button.active {
+    background: var(--accent);
+    color: white;
+  }
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .msg {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    font-size: 14px;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--bubble-user);
+    color: white;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.ai {
+    align-self: flex-start;
+    background: var(--bubble-ai);
+    border-bottom-left-radius: 2px;
+  }
+  .msg.ai .label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .typing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+  }
+  .typing .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: typing-bounce 1.2s infinite ease-in-out;
+  }
+  .typing .dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+  footer {
+    padding: 16px 24px 24px;
+    border-top: 1px solid #1f2937;
+  }
+  form {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+  }
+  input[type="text"] {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid #374151;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 14px;
+  }
+  input[type="text"]:focus {
+    outline: 2px solid var(--accent);
+  }
+  button.send {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .hint {
+    max-width: 760px;
+    margin: 8px auto 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.hidden {
+    display: none;
+  }
+  .modal-box {
+    background: var(--panel);
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 360px;
+    width: 90%;
+  }
+  .modal-box h2 {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+  .modal-box p {
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .modal-box input[type="tel"] {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid #374151;
+    background: #0f172a;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .modal-box input[type="tel"]:focus {
+    outline: 2px solid var(--accent);
+  }
+  .modal-box button {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .modal-error {
+    color: #f87171;
+    font-size: 12px;
+    margin: -4px 0 12px;
+    min-height: 14px;
+  }
+  .change-phone {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: auto;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Dora</h1>
+    </div>
+    <button type="button" class="change-phone" id="change-phone-btn">Trocar número</button>
+  </header>
+
+  <main id="messages"></main>
+
+  <footer>
+    <form id="chat-form">
+      <input type="text" id="prompt" placeholder="Digite sua pergunta..." autocomplete="off" required disabled />
+      <button type="submit" class="send" id="send-btn" disabled>Enviar</button>
+    </form>
+  </footer>
+
+  <div class="modal-overlay hidden" id="phone-modal">
+    <div class="modal-box">
+      <h2>Identifique-se para começar</h2>
+      <p>Informe seu telefone para que possamos manter o histórico da sua conversa.</p>
+      <form id="phone-form">
+        <input type="tel" id="phone-input" placeholder="(00) 00000-0000" autocomplete="tel"
+               inputmode="numeric" maxlength="16" required />
+        <p class="modal-error" id="phone-error"></p>
+        <button type="submit">Continuar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('prompt');
+    const sendBtn = document.getElementById('send-btn');
+
+    const PHONE_STORAGE_KEY = 'dora_phone_number';
+    const phoneModal = document.getElementById('phone-modal');
+    const phoneForm = document.getElementById('phone-form');
+    const phoneInput = document.getElementById('phone-input');
+    const phoneError = document.getElementById('phone-error');
+    const changePhoneBtn = document.getElementById('change-phone-btn');
+
+    let phoneNumber = null;
+
+    // Valid Brazilian area codes (DDDs), mirrors BrazilianPhoneValidator on the backend.
+    const VALID_DDDS = new Set([
+      '11', '12', '13', '14', '15', '16', '17', '18', '19',
+      '21', '22', '24', '27', '28',
+      '31', '32', '33', '34', '35', '37', '38',
+      '41', '42', '43', '44', '45', '46', '47', '48', '49',
+      '51', '53', '54', '55',
+      '61', '62', '63', '64', '65', '66', '67', '68', '69',
+      '71', '73', '74', '75', '77', '79',
+      '81', '82', '83', '84', '85', '86', '87', '88', '89',
+      '91', '92', '93', '94', '95', '96', '97', '98', '99',
+    ]);
+    const MOBILE_SUBSCRIBER = /^9[1-9]\d{7}$/;
+    const LANDLINE_SUBSCRIBER = /^[2-5]\d{7}$/;
+
+    function onlyDigits(raw) {
+      return (raw || '').replace(/\D/g, '');
+    }
+
+    function stripCountryCode(digits) {
+      if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+        return digits.slice(2);
+      }
+      return digits;
+    }
+
+    /**
+     * Validates a Brazilian phone number, returning either the normalized
+     * digits-only number (prefixed with the 55 country code) or an error message.
+     */
+    function validateBrazilianPhone(raw) {
+      const digits = stripCountryCode(onlyDigits(raw));
+
+      if (digits.length < 10) {
+        return { valid: false, message: 'Número incompleto. Informe o DDD e o telefone.' };
+      }
+      if (digits.length > 11) {
+        return { valid: false, message: 'Número muito longo para um telefone brasileiro.' };
+      }
+
+      const ddd = digits.slice(0, 2);
+      const subscriber = digits.slice(2);
+
+      if (!VALID_DDDS.has(ddd)) {
+        return { valid: false, message: 'DDD ' + ddd + ' não existe. Confira o número.' };
+      }
+
+      const isMobile = subscriber.length === 9 && MOBILE_SUBSCRIBER.test(subscriber);
+      const isLandline = subscriber.length === 8 && LANDLINE_SUBSCRIBER.test(subscriber);
+
+      if (!isMobile && !isLandline) {
+        return { valid: false, message: 'Informe um telefone válido com DDD.' };
+      }
+
+      return { valid: true, normalized: '55' + ddd + subscriber };
+    }
+
+    /** Formats digits progressively as "(00) 00000-0000" / "(00) 0000-0000" while the user types. */
+    function maskPhone(raw) {
+      const digits = onlyDigits(raw).slice(0, 11);
+      if (digits.length > 10) {
+        return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+      } else if (digits.length > 6) {
+        return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+      } else if (digits.length > 2) {
+        return digits.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+      } else if (digits.length > 0) {
+        return digits.replace(/(\d{0,2})/, '($1');
+      }
+      return '';
+    }
+
+    function setChatEnabled(enabled) {
+      input.disabled = !enabled;
+      sendBtn.disabled = !enabled;
+    }
+
+    function openPhoneModal() {
+      setChatEnabled(false);
+      phoneModal.classList.remove('hidden');
+      phoneError.textContent = '';
+      phoneInput.value = '';
+      phoneInput.focus();
+    }
+
+    function closePhoneModal() {
+      phoneModal.classList.add('hidden');
+      setChatEnabled(true);
+      input.focus();
+    }
+
+    function setPhoneNumber(value) {
+      phoneNumber = value;
+      localStorage.setItem(PHONE_STORAGE_KEY, value);
+    }
+
+    phoneInput.addEventListener('input', () => {
+      const caretWasAtEnd = phoneInput.selectionStart === phoneInput.value.length;
+      phoneInput.value = maskPhone(phoneInput.value);
+      if (caretWasAtEnd) {
+        phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
+      }
+      phoneError.textContent = '';
+    });
+
+    phoneForm.addEventListener('submit', (evt) => {
+      evt.preventDefault();
+      const result = validateBrazilianPhone(phoneInput.value);
+      if (!result.valid) {
+        phoneError.textContent = result.message;
+        phoneInput.focus();
+        return;
+      }
+      setPhoneNumber(result.normalized);
+      closePhoneModal();
+    });
+
+    changePhoneBtn.addEventListener('click', () => {
+      localStorage.removeItem(PHONE_STORAGE_KEY);
+      phoneNumber = null;
+      openPhoneModal();
+    });
+
+    (function initPhoneNumber() {
+      const stored = localStorage.getItem(PHONE_STORAGE_KEY);
+      if (stored) {
+        phoneNumber = stored;
+        setChatEnabled(true);
+      } else {
+        openPhoneModal();
+      }
+    })();
+
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      if (role === 'ai') {
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = 'Dora';
+        div.appendChild(label);
+      }
+      const content = document.createElement('span');
+      content.textContent = text;
+      div.appendChild(content);
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return content;
+    }
+
+    function showTypingIndicator(content) {
+      content.textContent = '';
+      const typing = document.createElement('span');
+      typing.className = 'typing';
+      typing.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      content.appendChild(typing);
+    }
+
+    async function streamPlainText(response, onChunk) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        onChunk(decoder.decode(value, { stream: true }));
+      }
+    }
+
+    form.addEventListener('submit', async (evt) => {
+      evt.preventDefault();
+      const question = input.value.trim();
+      if (!question) return;
+
+      addMessage('user', question);
+      input.value = '';
+      sendBtn.disabled = true;
+
+      const aiContent = addMessage('ai', '');
+      showTypingIndicator(aiContent);
+      let firstChunkReceived = false;
+
+      try {
+        const body = new URLSearchParams();
+        body.set('phoneNumber', phoneNumber);
+        body.set('message', question);
+        const response = await fetch('/dora/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString(),
+        });
+
+        if (!response.ok) {
+          if (response.status === 400) {
+            const errorText = await response.text();
+            aiContent.textContent = errorText || 'Telefone inválido. Informe novamente seu número.';
+            localStorage.removeItem(PHONE_STORAGE_KEY);
+            phoneNumber = null;
+            openPhoneModal();
+          } else {
+            aiContent.textContent = 'Erro: ' + response.status + ' ' + response.statusText;
+          }
+        } else {
+          await streamPlainText(response, (chunk) => {
+            if (!firstChunkReceived) {
+              firstChunkReceived = true;
+              aiContent.textContent = '';
+            }
+            aiContent.textContent += chunk;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+          });
+        }
+      } catch (err) {
+        aiContent.textContent = 'Erro ao contatar o servidor: ' + err.message;
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>

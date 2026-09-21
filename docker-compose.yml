@@ -1,0 +1,91 @@
+####
+# Production stack for dora — meant to run on a single EC2 instance.
+#
+# Services:
+#   caddy    - reverse proxy, automatic HTTPS (Let's Encrypt) for DOMAIN
+#   dora     - the Quarkus app itself (this repo), built from src/main/docker/Dockerfile.jvm.
+#              Runs the "prod" Quarkus profile, which uses OpenAI (gpt-4o-mini) as the chat
+#              model instead of Ollama (see application.properties) — no local LLM runtime
+#              needed on the instance.
+#   postgres - pgvector-enabled Postgres, chat persistence + embeddings storage
+#   redis    - conversation memory store
+#
+# Usage (on the EC2 instance, after cloning this repo and creating a .env file
+# from .env.example — see docs/aws.md for the full walkthrough):
+#
+#   ./mvnw package -DskipTests
+#   docker compose up -d --build
+#
+####
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:?set DOMAIN in .env, e.g. dora.example.com}
+      - ACME_EMAIL=${ACME_EMAIL:?set ACME_EMAIL in .env for Let's Encrypt registration}
+    depends_on:
+      - dora
+
+  dora:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    restart: unless-stopped
+    environment:
+      QUARKUS_PROFILE: prod
+      POSTGRES_USER: ${POSTGRES_USER:-dora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      JDBC_URL: jdbc:postgresql://postgres:5432/dora
+      REDIS_URL: redis://redis:6379
+      RAG_LOCATION: /work/rag
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-dora-webhook-verify}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      # Required in prod: used as the chat model (gpt-4o-mini) and for WhatsApp audio
+      # transcription (Whisper).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    # No published ports: only reachable through the caddy reverse proxy.
+    expose:
+      - "8080"
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dora
+      POSTGRES_USER: ${POSTGRES_USER:-dora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dora} -d dora"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
