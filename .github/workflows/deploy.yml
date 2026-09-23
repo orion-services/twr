@@ -38,6 +38,19 @@ jobs:
       - name: Check Java 25
         run: java -version 2>&1 | tee /dev/stderr | grep -q 'version "25'
 
+      - name: Check Docker buildx
+        run: |
+          docker buildx version
+          ver=$(docker buildx version | awk '{print $2}' | sed 's/^v//')
+          # compose --build needs >= 0.17.0
+          printf '%s\n' "$ver" | awk -F. '{
+            if ($1 > 0 || ($1 == 0 && $2 >= 17)) exit 0;
+            exit 1
+          }' || {
+            echo "docker buildx $ver is too old (need >= 0.17.0)" >&2
+            exit 1
+          }
+
       - name: Build jar
         run: ./mvnw package -DskipTests
 

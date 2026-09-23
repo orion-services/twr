@@ -37,33 +37,89 @@ usermod -aG docker ec2-user
 mkdir -p /usr/libexec/docker/cli-plugins
 ARCH=$(uname -m) # aarch64 on t4g
 
-if [ ! -x /usr/libexec/docker/cli-plugins/docker-compose ]; then
-  case "$ARCH" in
-    aarch64) COMPOSE_ARCH="aarch64" ;;
-    x86_64)  COMPOSE_ARCH="x86_64" ;;
-    *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
-  esac
+case "$ARCH" in
+  aarch64)
+    COMPOSE_ARCH="aarch64"
+    BUILDX_ARCH="arm64"
+    ;;
+  x86_64)
+    COMPOSE_ARCH="x86_64"
+    BUILDX_ARCH="amd64"
+    ;;
+  *)
+    echo "unsupported arch: $ARCH" >&2
+    exit 1
+    ;;
+esac
+
+# Pin known-good minimums. `docker compose ... --build` needs buildx >= 0.17.0;
+# Amazon Linux's docker package does not ship buildx, and GitHub API rate limits
+# can leave an empty/null version — so we always install (or upgrade) and fall
+# back to a pinned release when the API is unavailable.
+COMPOSE_MIN_VERSION="2.32.0"
+BUILDX_MIN_VERSION="0.19.0"
+BUILDX_FALLBACK_TAG="v0.19.3"
+
+install_compose_plugin() {
   curl -fsSL \
     "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$${COMPOSE_ARCH}" \
     -o /usr/libexec/docker/cli-plugins/docker-compose
   chmod +x /usr/libexec/docker/cli-plugins/docker-compose
-fi
+}
 
-# The `docker` package on Amazon Linux 2023 (unlike Docker CE's own repo)
-# doesn't ship a buildx plugin, but `docker compose ... --build` requires
-# buildx >= 0.17.0 under the hood. Install it the same way as compose above.
-if [ ! -x /usr/libexec/docker/cli-plugins/docker-buildx ]; then
-  case "$ARCH" in
-    aarch64) BUILDX_ARCH="arm64" ;;
-    x86_64)  BUILDX_ARCH="amd64" ;;
-    *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
-  esac
-  BUILDX_VERSION=$(curl -fsSL https://api.github.com/repos/docker/buildx/releases/latest | jq -r .tag_name)
+install_buildx_plugin() {
+  local tag=""
+  tag=$(curl -fsSL https://api.github.com/repos/docker/buildx/releases/latest \
+    | jq -r '.tag_name // empty' 2>/dev/null || true)
+  if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+    echo "WARNING: could not resolve latest buildx from GitHub API; using $${BUILDX_FALLBACK_TAG}" >&2
+    tag="$BUILDX_FALLBACK_TAG"
+  fi
   curl -fsSL \
-    "https://github.com/docker/buildx/releases/download/$${BUILDX_VERSION}/buildx-$${BUILDX_VERSION}.linux-$${BUILDX_ARCH}" \
+    "https://github.com/docker/buildx/releases/download/$${tag}/buildx-$${tag}.linux-$${BUILDX_ARCH}" \
     -o /usr/libexec/docker/cli-plugins/docker-buildx
   chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
+}
+
+version_ge() {
+  # Returns 0 if $1 >= $2 (semver-ish: major.minor.patch, ignores leading "v").
+  local a b
+  a=$(echo "$1" | sed 's/^v//;s/[^0-9.].*//')
+  b=$(echo "$2" | sed 's/^v//;s/[^0-9.].*//')
+  [ "$(printf '%s\n%s\n' "$b" "$a" | sort -V | head -n1)" = "$b" ]
+}
+
+COMPOSE_CURRENT=""
+if [ -x /usr/libexec/docker/cli-plugins/docker-compose ]; then
+  COMPOSE_CURRENT=$(docker compose version --short 2>/dev/null || true)
 fi
+if [ -z "$COMPOSE_CURRENT" ] || ! version_ge "$COMPOSE_CURRENT" "$COMPOSE_MIN_VERSION"; then
+  echo "Installing docker-compose plugin (have='$${COMPOSE_CURRENT:-none}', need>=$COMPOSE_MIN_VERSION)"
+  install_compose_plugin
+fi
+
+BUILDX_CURRENT=""
+if [ -x /usr/libexec/docker/cli-plugins/docker-buildx ]; then
+  BUILDX_CURRENT=$(docker buildx version 2>/dev/null | awk '{print $2}' | sed 's/^v//' || true)
+fi
+if [ -z "$BUILDX_CURRENT" ] || ! version_ge "$BUILDX_CURRENT" "$BUILDX_MIN_VERSION"; then
+  echo "Installing docker-buildx plugin (have='$${BUILDX_CURRENT:-none}', need>=$BUILDX_MIN_VERSION)"
+  install_buildx_plugin
+fi
+
+# Fail boot loudly if plugins are still missing/too old — otherwise the first
+# `docker compose ... --build` fails with "compose build requires buildx 0.17+".
+docker compose version
+docker buildx version
+BUILDX_CURRENT=$(docker buildx version | awk '{print $2}' | sed 's/^v//')
+version_ge "$BUILDX_CURRENT" "0.17.0" \
+  || { echo "ERROR: docker buildx $BUILDX_CURRENT is older than 0.17.0" >&2; exit 1; }
+
+# Also expose the plugins under ec2-user's CLI path (some sessions only look there).
+mkdir -p /home/ec2-user/.docker/cli-plugins
+ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /home/ec2-user/.docker/cli-plugins/docker-compose
+ln -sfn /usr/libexec/docker/cli-plugins/docker-buildx /home/ec2-user/.docker/cli-plugins/docker-buildx
+chown -R ec2-user:ec2-user /home/ec2-user/.docker
 
 # ------------------------------------------------------------------
 # Extra EBS data volume -> /data (Postgres/Redis/Ollama persistent data +
