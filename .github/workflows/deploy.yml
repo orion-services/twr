@@ -1,19 +1,20 @@
 ####
-# Deploys dora to the production EC2 instance on every push to `main`.
+# Deploys twr to the production EC2 instance (sa-east-1) on every push to `main`.
 #
-# Runs on a self-hosted GitHub Actions runner registered directly on that
-# instance (see docs/aws.md, section "CI/CD com GitHub Actions") — no AWS
-# credentials are needed as GitHub secrets, since the job executes locally
-# with the same permissions as a manual deploy.
+# Runs on a self-hosted GitHub Actions runner registered automatically on that
+# instance at boot by infra/terraform/user_data.sh.tftpl (see docs/aws.md,
+# section "CI/CD com GitHub Actions") — no AWS credentials are needed as GitHub
+# secrets, since the job executes locally with the same permissions as a
+# manual deploy.
 #
-# Requires a `.env` file already present at /opt/dora/.env on the instance
+# Requires a `.env` file already present at /opt/twr/.env on the instance
 # (created once, manually, per docs/aws.md step 4) with all required
 # production secrets (POSTGRES_PASSWORD, OPENAI_API_KEY, DOMAIN, etc.). This
 # path is independent from the runner's own checkout directory, and is never
 # touched by `actions/checkout` (which wipes untracked files on each run).
 #
-# `-p dora` pins the Compose project name so this run reuses the same
-# containers/volumes as the initial manual deploy in /opt/dora, even though
+# `-p twr` pins the Compose project name so this run reuses the same
+# containers/volumes as the initial manual deploy in /opt/twr, even though
 # the runner checks out the repo into its own separate work directory.
 ####
 name: Deploy to AWS
@@ -21,16 +22,24 @@ name: Deploy to AWS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: [self-hosted, dora-prod]
+    runs-on: [self-hosted, twr-prod]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Check Java 25
+        run: java -version 2>&1 | tee /dev/stderr | grep -q 'version "25'
 
       - name: Build jar
         run: ./mvnw package -DskipTests
 
       - name: Deploy stack
-        run: docker compose -p dora --env-file /opt/dora/.env up -d --build dora
+        run: docker compose -p twr --env-file /opt/twr/.env up -d --build twr

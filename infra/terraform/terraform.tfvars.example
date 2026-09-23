@@ -1,10 +1,15 @@
 # Copy to terraform.tfvars and adjust as needed. All variables have sane
 # defaults (see variables.tf) — this file is optional.
 
-# aws_region   = "us-east-1"
-# project_name = "dora"
+# aws_region   = "sa-east-1"
+# project_name = "twr"
 # instance_type = "t4g.medium"
 # data_volume_size_gb = 40
+
+# Self-hosted GitHub Actions runner (registered automatically at boot).
+# github_repo              = "orion-services/twr"
+# github_runner_labels     = "twr-prod"
+# github_pat_ssm_parameter = "/twr/github-runner-pat"
 
 # Only set this if you need SSH in addition to (or instead of) SSM Session
 # Manager. Leave commented out to keep the security group closed on port 22.

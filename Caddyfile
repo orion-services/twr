@@ -3,7 +3,7 @@
 }
 
 {$DOMAIN} {
-	reverse_proxy dora:8080
+	reverse_proxy twr:8080
 
 	encode gzip
 

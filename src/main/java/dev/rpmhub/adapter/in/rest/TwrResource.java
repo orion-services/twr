@@ -24,12 +24,12 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 /**
- * REST resource that exposes the Dora chat endpoint.
+ * REST resource that exposes the TWR chat endpoint.
  *
  * @author Rodrigo Prestes Machado
  */
-@Path("/dora")
-public class DoraResource {
+@Path("/twr")
+public class TwrResource {
 
     /**
      * Driving port used to process chat requests.
@@ -42,7 +42,7 @@ public class DoraResource {
      * @param chatUseCase application port for chatting
      */
     @Inject
-    public DoraResource(ChatUseCase chatUseCase) {
+    public TwrResource(ChatUseCase chatUseCase) {
         this.chatUseCase = chatUseCase;
     }
 

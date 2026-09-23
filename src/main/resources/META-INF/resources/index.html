@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dora</title>
+<title>TWR</title>
 <script src="https://cdn.jsdelivr.net/npm/marked@13/lib/marked.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
@@ -285,7 +285,7 @@
 <body>
   <header>
     <div>
-      <h1>Dora</h1>
+      <h1>TWR</h1>
     </div>
     <button type="button" class="change-phone" id="change-phone-btn">Trocar número</button>
   </header>
@@ -318,7 +318,7 @@
     const input = document.getElementById('prompt');
     const sendBtn = document.getElementById('send-btn');
 
-    const PHONE_STORAGE_KEY = 'dora_phone_number';
+    const PHONE_STORAGE_KEY = 'twr_phone_number';
     const phoneModal = document.getElementById('phone-modal');
     const phoneForm = document.getElementById('phone-form');
     const phoneInput = document.getElementById('phone-input');
@@ -471,7 +471,7 @@
       if (role === 'ai') {
         const label = document.createElement('span');
         label.className = 'label';
-        label.textContent = 'Dora';
+        label.textContent = 'TWR';
         div.appendChild(label);
       }
       const content = document.createElement('span');
@@ -523,7 +523,7 @@
         const body = new URLSearchParams();
         body.set('phoneNumber', phoneNumber);
         body.set('message', question);
-        const response = await fetch('/dora/chat', {
+        const response = await fetch('/twr/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: body.toString(),

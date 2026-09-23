@@ -1,19 +1,19 @@
 variable "aws_region" {
   description = "AWS region to deploy into."
   type        = string
-  default     = "us-east-1"
+  default     = "sa-east-1" # São Paulo
 }
 
 variable "project_name" {
   description = "Name/tag prefix used for all resources created by this stack."
   type        = string
-  default     = "dora"
+  default     = "twr"
 }
 
 variable "instance_type" {
   description = <<-EOT
     EC2 instance type. t4g.* (Graviton/ARM) is cheaper than equivalent x86 (t3.*)
-    instances and is enough to run dora + Postgres + Redis + Ollama (gemma4) on a
+    instances and is enough to run twr + Postgres + Redis + Ollama (gemma4) on a
     single box. Bump to t4g.large if Ollama inference feels too slow/OOMs.
   EOT
   type        = string
@@ -62,4 +62,27 @@ variable "subnet_id" {
   description = "Subnet to deploy the instance into. Leave null to use the default VPC's default subnet."
   type        = string
   default     = null
+}
+
+variable "github_repo" {
+  description = "GitHub repository (owner/name) the self-hosted Actions runner registers against."
+  type        = string
+  default     = "orion-services/twr"
+}
+
+variable "github_runner_labels" {
+  description = "Comma-separated labels for the self-hosted runner. Must match `runs-on` in .github/workflows/deploy.yml."
+  type        = string
+  default     = "twr-prod"
+}
+
+variable "github_pat_ssm_parameter" {
+  description = <<-EOT
+    Name of the SSM Parameter Store SecureString holding a GitHub fine-grained PAT
+    with "Administration: Read and write" on github_repo. Read by user_data.sh at boot
+    to register the self-hosted runner. Created manually (outside Terraform, so the
+    secret never lands in the state) — see docs/aws.md.
+  EOT
+  type        = string
+  default     = "/twr/github-runner-pat"
 }

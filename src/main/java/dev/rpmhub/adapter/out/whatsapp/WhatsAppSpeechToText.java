@@ -29,7 +29,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * Implementation of {@link SpeechToTextPort} using the OpenAI Whisper API. This adapter is
- * independent from the Ollama-based chat model used by {@code DoraAgent}; it only needs an
+ * independent from the Ollama-based chat model used by {@code TwrAgent}; it only needs an
  * OpenAI API key so that WhatsApp voice notes can be transcribed before being handed to the
  * regular chat pipeline.
  *
@@ -82,7 +82,7 @@ public class WhatsAppSpeechToText implements SpeechToTextPort {
         String filename = "audio." + extension;
 
         try {
-            String boundary = "----DoraWhatsAppBoundary" + UUID.randomUUID().toString().replace("-", "");
+            String boundary = "----TwrWhatsAppBoundary" + UUID.randomUUID().toString().replace("-", "");
             byte[] multipartBody = buildMultipartBody(boundary, audioData, filename, mimeType);
 
             HttpRequest request = HttpRequest.newBuilder()

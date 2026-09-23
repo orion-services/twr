@@ -16,7 +16,7 @@ import dev.rpmhub.domain.port.in.ChatUseCase;
 import io.smallrye.mutiny.Multi;
 
 /**
- * Plain unit tests for {@link DoraResource}, without booting Quarkus.
+ * Plain unit tests for {@link TwrResource}, without booting Quarkus.
  *
  * @author Rodrigo Prestes Machado
  */
@@ -32,14 +32,14 @@ class AgentResourceUnitTest {
     /**
      * Resource under test.
      */
-    private DoraResource agentResource;
+    private TwrResource agentResource;
 
     /**
      * Wires the resource with the mocked use case before each test.
      */
     @BeforeEach
     void setUp() {
-        agentResource = new DoraResource(chatUseCase);
+        agentResource = new TwrResource(chatUseCase);
     }
 
     /**

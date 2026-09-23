@@ -1,5 +1,5 @@
 ####
-# Low-cost, single-EC2-instance infrastructure for dora.
+# Low-cost, single-EC2-instance infrastructure for twr.
 #
 # Everything (app + Postgres/pgvector + Redis + Ollama) runs as Docker Compose
 # services on one Graviton (ARM) EC2 instance. No RDS, ElastiCache or ALB — those
@@ -21,8 +21,13 @@ data "aws_subnets" "selected" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
+
 locals {
   subnet_id = coalesce(var.subnet_id, data.aws_subnets.selected.ids[0])
+
+  github_pat_ssm_parameter_arn = "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.github_pat_ssm_parameter, "/")}"
 }
 
 # Amazon Linux 2023, arm64 — matches the t4g (Graviton) instance family.
@@ -50,9 +55,9 @@ data "aws_ami" "al2023_arm64" {
 # Security group — only 80/443 inbound (Caddy). No SSH port by default;
 # use SSM Session Manager for shell access (see outputs.tf).
 # ------------------------------------------------------------------
-resource "aws_security_group" "dora" {
+resource "aws_security_group" "twr" {
   name        = "${var.project_name}-sg"
-  description = "dora: allow HTTP/HTTPS from the internet, admin access via SSM only"
+  description = "twr: allow HTTP/HTTPS from the internet, admin access via SSM only"
   vpc_id      = data.aws_vpc.selected.id
 
   ingress {
@@ -97,10 +102,11 @@ resource "aws_security_group" "dora" {
 }
 
 # ------------------------------------------------------------------
-# IAM role — grants SSM Session Manager access only. No other AWS
-# permissions are needed since everything lives on the single instance.
+# IAM role — grants SSM Session Manager access, plus read access to the
+# single SSM parameter holding the GitHub PAT used to register the
+# self-hosted Actions runner at boot (see user_data.sh.tftpl).
 # ------------------------------------------------------------------
-resource "aws_iam_role" "dora_instance" {
+resource "aws_iam_role" "twr_instance" {
   name = "${var.project_name}-instance-role"
 
   assume_role_policy = jsonencode({
@@ -118,25 +124,47 @@ resource "aws_iam_role" "dora_instance" {
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_core" {
-  role       = aws_iam_role.dora_instance.name
+  role       = aws_iam_role.twr_instance.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_instance_profile" "dora_instance" {
+# The default aws/ssm KMS key's policy already allows decryption through SSM
+# for principals in the account, so no extra kms:Decrypt statement is needed.
+resource "aws_iam_role_policy" "github_runner_pat" {
+  name = "${var.project_name}-github-runner-pat"
+  role = aws_iam_role.twr_instance.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter"]
+      Resource = local.github_pat_ssm_parameter_arn
+    }]
+  })
+}
+
+resource "aws_iam_instance_profile" "twr_instance" {
   name = "${var.project_name}-instance-profile"
-  role = aws_iam_role.dora_instance.name
+  role = aws_iam_role.twr_instance.name
 }
 
 # ------------------------------------------------------------------
 # EC2 instance
 # ------------------------------------------------------------------
-resource "aws_instance" "dora" {
+resource "aws_instance" "twr" {
   ami                    = data.aws_ami.al2023_arm64.id
   instance_type          = var.instance_type
   subnet_id              = local.subnet_id
-  vpc_security_group_ids = [aws_security_group.dora.id]
-  iam_instance_profile   = aws_iam_instance_profile.dora_instance.name
-  user_data              = file("${path.module}/user_data.sh")
+  vpc_security_group_ids = [aws_security_group.twr.id]
+  iam_instance_profile   = aws_iam_instance_profile.twr_instance.name
+  user_data = templatefile("${path.module}/user_data.sh.tftpl", {
+    project_name         = var.project_name
+    aws_region           = var.aws_region
+    github_repo          = var.github_repo
+    github_runner_labels = var.github_runner_labels
+    github_pat_parameter = var.github_pat_ssm_parameter
+  })
   # Re-run user_data if it changes (Terraform otherwise ignores user_data updates
   # on existing instances). Remove this if you don't want instance replacement on
   # every script tweak.
@@ -156,12 +184,15 @@ resource "aws_instance" "dora" {
     Name    = var.project_name
     Project = var.project_name
   }
+
+  # user_data reads the GitHub PAT from SSM on first boot.
+  depends_on = [aws_iam_role_policy.github_runner_pat]
 }
 
 # Extra EBS volume for Postgres/Redis/Ollama data, kept independent from the
 # root volume/instance lifecycle.
 resource "aws_ebs_volume" "data" {
-  availability_zone = aws_instance.dora.availability_zone
+  availability_zone = aws_instance.twr.availability_zone
   size              = var.data_volume_size_gb
   type              = var.data_volume_type
 
@@ -174,14 +205,14 @@ resource "aws_ebs_volume" "data" {
 resource "aws_volume_attachment" "data" {
   device_name = "/dev/sdf" # surfaces as /dev/nvme1n1 on Nitro instances (t4g); handled in user_data.sh
   volume_id   = aws_ebs_volume.data.id
-  instance_id = aws_instance.dora.id
+  instance_id = aws_instance.twr.id
 }
 
 # ------------------------------------------------------------------
 # Elastic IP — stable public address to point DNS at.
 # ------------------------------------------------------------------
-resource "aws_eip" "dora" {
-  instance = aws_instance.dora.id
+resource "aws_eip" "twr" {
+  instance = aws_instance.twr.id
   domain   = "vpc"
 
   tags = {

@@ -1,22 +1,35 @@
 #!/bin/bash
-# Bootstraps a fresh Amazon Linux 2023 (arm64) instance to run dora's production
-# Docker Compose stack. Idempotent-ish: safe to re-run (e.g. after a
-# user_data_replace_on_change instance replacement).
+# Bootstraps a fresh Amazon Linux 2023 (arm64) instance to run twr's production
+# Docker Compose stack and registers it as a self-hosted GitHub Actions runner.
+# Idempotent-ish: safe to re-run (e.g. after a user_data_replace_on_change
+# instance replacement).
+#
+# Rendered by Terraform's templatefile() (see main.tf): bash brace expansions
+# must be written with a doubled dollar sign to escape Terraform interpolation.
 set -euxo pipefail
 
-exec > >(tee -a /var/log/dora-user-data.log) 2>&1
-echo "=== dora user_data starting at $(date -u) ==="
+PROJECT_NAME="${project_name}"
+AWS_REGION="${aws_region}"
+GITHUB_REPO="${github_repo}"
+GITHUB_RUNNER_LABELS="${github_runner_labels}"
+GITHUB_PAT_PARAMETER="${github_pat_parameter}"
+APP_DIR="/opt/$PROJECT_NAME"
+RUNNER_DIR="/opt/actions-runner"
+
+exec > >(tee -a "/var/log/$PROJECT_NAME-user-data.log") 2>&1
+echo "=== $PROJECT_NAME user_data starting at $(date -u) ==="
 
 # ------------------------------------------------------------------
-# Docker + Compose plugin + JDK
+# Docker + Compose plugin + JDK 25 + runner dependencies
 # ------------------------------------------------------------------
 dnf update -y
-dnf install -y docker git java-25-amazon-corretto-devel
+dnf install -y docker git jq libicu java-25-amazon-corretto-devel
 # Dockerfile.jvm (src/main/docker/Dockerfile.jvm) only copies the already-built
 # target/quarkus-app/ — it doesn't compile the app itself. `./mvnw package`
 # needs to run on the host first (both for the first manual deploy and for
 # every run of the GitHub Actions self-hosted runner, see deploy.yml), which
 # requires a JDK matching <maven.compiler.release> in pom.xml (currently 25).
+java -version 2>&1 | grep -q 'version "25' || { echo "ERROR: expected Java 25 as the default JDK" >&2; exit 1; }
 
 systemctl enable --now docker
 usermod -aG docker ec2-user
@@ -31,7 +44,7 @@ if [ ! -x /usr/libexec/docker/cli-plugins/docker-compose ]; then
     *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
   esac
   curl -fsSL \
-    "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}" \
+    "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$${COMPOSE_ARCH}" \
     -o /usr/libexec/docker/cli-plugins/docker-compose
   chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 fi
@@ -45,9 +58,9 @@ if [ ! -x /usr/libexec/docker/cli-plugins/docker-buildx ]; then
     x86_64)  BUILDX_ARCH="amd64" ;;
     *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
   esac
-  BUILDX_VERSION=$(curl -fsSL https://api.github.com/repos/docker/buildx/releases/latest | grep -m1 '"tag_name"' | cut -d '"' -f4)
+  BUILDX_VERSION=$(curl -fsSL https://api.github.com/repos/docker/buildx/releases/latest | jq -r .tag_name)
   curl -fsSL \
-    "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-${BUILDX_ARCH}" \
+    "https://github.com/docker/buildx/releases/download/$${BUILDX_VERSION}/buildx-$${BUILDX_VERSION}.linux-$${BUILDX_ARCH}" \
     -o /usr/libexec/docker/cli-plugins/docker-buildx
   chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
 fi
@@ -94,10 +107,81 @@ EOF
 fi
 
 # ------------------------------------------------------------------
-# App directory — the repo gets cloned/copied here manually on first deploy
-# (see docs/aws.md). SSM Session Manager is used for shell access.
+# App directory — holds the production .env (created manually via SSM, see
+# docs/aws.md) used by both manual deploys and the GitHub Actions workflow.
 # ------------------------------------------------------------------
-mkdir -p /opt/dora
-chown ec2-user:ec2-user /opt/dora
+mkdir -p "$APP_DIR"
+chown ec2-user:ec2-user "$APP_DIR"
 
-echo "=== dora user_data finished at $(date -u) ==="
+# ------------------------------------------------------------------
+# Self-hosted GitHub Actions runner (runs .github/workflows/deploy.yml).
+# Reads a GitHub PAT from SSM Parameter Store, exchanges it for a short-lived
+# runner registration token and installs the runner as a systemd service.
+# Never fails the boot: if anything is missing, it logs a warning and the
+# runner can be registered later by re-running this section.
+# ------------------------------------------------------------------
+register_github_runner() {
+  if [ -f "$RUNNER_DIR/.runner" ]; then
+    echo "GitHub runner already configured in $RUNNER_DIR, skipping registration"
+    return 0
+  fi
+
+  local pat=""
+  # IAM permissions can take a few seconds to propagate to a brand-new instance.
+  for attempt in 1 2 3 4 5 6; do
+    set +x
+    pat=$(aws ssm get-parameter --region "$AWS_REGION" --name "$GITHUB_PAT_PARAMETER" \
+      --with-decryption --query Parameter.Value --output text 2>/dev/null || true)
+    set -x
+    [ -n "$pat" ] && break
+    sleep 10
+  done
+  if [ -z "$pat" ]; then
+    echo "WARNING: could not read SSM parameter $GITHUB_PAT_PARAMETER; skipping GitHub runner registration" >&2
+    return 0
+  fi
+
+  local reg_token
+  set +x
+  reg_token=$(curl -fsSL -X POST \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer $pat" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/$GITHUB_REPO/actions/runners/registration-token" | jq -r .token)
+  unset pat
+  set -x
+  if [ -z "$reg_token" ] || [ "$reg_token" = "null" ]; then
+    echo "WARNING: failed to obtain a runner registration token for $GITHUB_REPO" >&2
+    return 0
+  fi
+
+  local runner_arch
+  case "$ARCH" in
+    aarch64) runner_arch="arm64" ;;
+    x86_64)  runner_arch="x64" ;;
+  esac
+  local runner_version
+  runner_version=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | jq -r .tag_name | sed 's/^v//')
+
+  mkdir -p "$RUNNER_DIR"
+  curl -fsSL \
+    "https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-linux-$runner_arch-$runner_version.tar.gz" \
+    | tar xz -C "$RUNNER_DIR"
+  chown -R ec2-user:ec2-user "$RUNNER_DIR"
+
+  set +x
+  sudo -u ec2-user bash -c "cd '$RUNNER_DIR' && ./config.sh \
+    --url 'https://github.com/$GITHUB_REPO' \
+    --token '$reg_token' \
+    --name '$PROJECT_NAME-$(hostname -s)' \
+    --labels '$GITHUB_RUNNER_LABELS' \
+    --unattended --replace"
+  unset reg_token
+  set -x
+
+  (cd "$RUNNER_DIR" && ./svc.sh install ec2-user && ./svc.sh start)
+}
+
+register_github_runner || echo "WARNING: GitHub runner registration failed; see log above" >&2
+
+echo "=== $PROJECT_NAME user_data finished at $(date -u) ==="

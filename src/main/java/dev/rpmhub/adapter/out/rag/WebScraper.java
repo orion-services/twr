@@ -46,7 +46,7 @@ public class WebScraper implements WebScraperPort {
     int timeoutSeconds;
 
     /** {@code User-Agent} header sent with every scrape request. */
-    @ConfigProperty(name = "rag.scrape.user-agent", defaultValue = "Dora-RAG-Scraper/1.0")
+    @ConfigProperty(name = "rag.scrape.user-agent", defaultValue = "TWR-RAG-Scraper/1.0")
     String userAgent;
 
     /** When {@code true}, scraped Markdown is also saved to {@link #markdownOutputDir} for inspection. */

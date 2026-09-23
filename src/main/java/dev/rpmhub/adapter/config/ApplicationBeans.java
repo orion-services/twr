@@ -9,7 +9,7 @@
  */
 package dev.rpmhub.adapter.config;
 
-import dev.rpmhub.adapter.out.ai.DoraAgent;
+import dev.rpmhub.adapter.out.ai.TwrAgent;
 import dev.rpmhub.application.ChatService;
 import dev.rpmhub.application.IngestService;
 import dev.rpmhub.domain.port.in.ChatUseCase;
@@ -53,7 +53,7 @@ public class ApplicationBeans {
 
     /** LangChain4j AI service that streams replies grounded in RAG-retrieved context. */
     @Inject
-    DoraAgent doraAgent;
+    TwrAgent twrAgent;
 
     /** Number of context chunks retrieved per message. */
     @ConfigProperty(name = "rag.max-results", defaultValue = "3")
@@ -76,7 +76,7 @@ public class ApplicationBeans {
     @ApplicationScoped
     public ChatUseCase chatUseCase() {
         long inactivityThresholdMs = chatInactivityThresholdMinutes * 60_000L;
-        return new ChatService(chatRepository, embeddingRepository, doraAgent, ragMaxResults, ragMinScore,
+        return new ChatService(chatRepository, embeddingRepository, twrAgent, ragMaxResults, ragMinScore,
                 inactivityThresholdMs);
     }
 

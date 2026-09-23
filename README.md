@@ -1,6 +1,10 @@
-# dora
+# twr
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This project uses Quarkus, the Supersonic Subatomic Java Framework, and requires **Java 25**.
+
+Production runs on a single EC2 instance in São Paulo (`sa-east-1`), provisioned with
+Terraform (`infra/terraform`). Every push to `main` is deployed automatically by a
+self-hosted GitHub Actions runner on that instance — see [docs/aws.md](docs/aws.md).
 
 If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
@@ -49,7 +53,7 @@ Or, if you don't have GraalVM installed, you can run the native executable build
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
 ```
 
-You can then execute your native executable with: `./target/dora-1.0.0-runner`
+You can then execute your native executable with: `./target/twr-1.0.0-runner`
 
 If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
 

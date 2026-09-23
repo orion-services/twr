@@ -65,7 +65,7 @@ public class WhatsAppWebhookResource {
     private final ObjectMapper objectMapper;
 
     /** Token expected in the {@code hub.verify_token} query parameter during webhook setup. */
-    @ConfigProperty(name = "whatsapp.verify-token", defaultValue = "dora-webhook-verify")
+    @ConfigProperty(name = "whatsapp.verify-token", defaultValue = "twr-webhook-verify")
     String verifyToken;
 
     /** Meta App Secret used to validate the {@code X-Hub-Signature-256} header. */

@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import dev.rpmhub.adapter.out.ai.DoraAgent;
+import dev.rpmhub.adapter.out.ai.TwrAgent;
 import dev.rpmhub.domain.model.Chat;
 import dev.rpmhub.domain.model.RagQuery;
 import dev.rpmhub.domain.model.RagResponse;
@@ -47,7 +47,7 @@ class ChatServiceTest {
     /**
      * Assistant test double that records invoked prompts.
      */
-    private FakeDoraAgent doraAgent;
+    private FakeTwrAgent twrAgent;
 
     /**
      * Service under test.
@@ -61,8 +61,8 @@ class ChatServiceTest {
     void setUp() {
         chatRepository = new FakeChatRepository();
         embeddingRepository = new FakeEmbeddingRepository();
-        doraAgent = new FakeDoraAgent();
-        chatService = new ChatService(chatRepository, embeddingRepository, doraAgent, 3, 0.6, 30 * MINUTE_MS);
+        twrAgent = new FakeTwrAgent();
+        chatService = new ChatService(chatRepository, embeddingRepository, twrAgent, 3, 0.6, 30 * MINUTE_MS);
     }
 
     /**
@@ -73,7 +73,7 @@ class ChatServiceTest {
         List<String> chunks = chatService.chat("5511999999999", "oi").collect().asList().await().indefinitely();
 
         assertEquals(List.of("resposta"), chunks);
-        assertEquals(List.of("oi"), doraAgent.prompts);
+        assertEquals(List.of("oi"), twrAgent.prompts);
         assertTrue(chatRepository.findLastByPhone("5511999999999").isPresent());
         Chat chat = chatRepository.findLastByPhone("5511999999999").orElseThrow();
         assertEquals(1, chat.getUserMessages().size());
@@ -93,7 +93,7 @@ class ChatServiceTest {
 
         assertSame(first, second);
         assertEquals(2, second.getUserMessages().size());
-        assertEquals(List.of("oi", "tudo bem?"), doraAgent.prompts);
+        assertEquals(List.of("oi", "tudo bem?"), twrAgent.prompts);
     }
 
     /**
@@ -120,7 +120,7 @@ class ChatServiceTest {
      */
     @Test
     void chat_persistsAgentReply_whenStreamCompletes() {
-        doraAgent.chunks = List.of("res", "pos", "ta");
+        twrAgent.chunks = List.of("res", "pos", "ta");
 
         List<String> chunks = chatService.chat("5511999999999", "oi").collect().asList().await().indefinitely();
 
@@ -157,7 +157,7 @@ class ChatServiceTest {
 
         chatService.chat("5511999999999", "oi").collect().asList().await().indefinitely();
 
-        assertEquals(List.of("trecho relevante"), doraAgent.contexts);
+        assertEquals(List.of("trecho relevante"), twrAgent.contexts);
     }
 
     /**
@@ -200,7 +200,7 @@ class ChatServiceTest {
     /**
      * Fake AI service that records prompts/contexts and returns a fixed chunk.
      */
-    private static final class FakeDoraAgent implements DoraAgent {
+    private static final class FakeTwrAgent implements TwrAgent {
 
         /**
          * Prompts received by the AI service.

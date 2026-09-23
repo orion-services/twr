@@ -16,7 +16,7 @@ import dev.rpmhub.domain.model.Chat;
 import dev.rpmhub.domain.model.RagQuery;
 import dev.rpmhub.domain.model.RagResponse;
 import dev.rpmhub.domain.model.User;
-import dev.rpmhub.adapter.out.ai.DoraAgent;
+import dev.rpmhub.adapter.out.ai.TwrAgent;
 import dev.rpmhub.domain.model.UserMessage;
 import dev.rpmhub.domain.port.in.ChatUseCase;
 import dev.rpmhub.domain.port.out.EmbeddingRepository;
@@ -47,7 +47,7 @@ public class ChatService implements ChatUseCase {
     private final EmbeddingRepository embeddingRepository;
 
     /** AI service used to generate a streaming reply grounded in retrieved context. */
-    private final DoraAgent doraAgent;
+    private final TwrAgent twrAgent;
 
     /** Number of context chunks retrieved per message ({@code rag.max-results}). */
     private final int maxResults;
@@ -63,16 +63,16 @@ public class ChatService implements ChatUseCase {
      *
      * @param chatRepository        port used to persist chats
      * @param embeddingRepository   port for vector-similarity search
-     * @param doraAgent             AI service used to generate contextual replies
+     * @param twrAgent             AI service used to generate contextual replies
      * @param maxResults            number of context chunks retrieved per message
      * @param minScore              minimum similarity score required for a retrieved chunk to be used as context
      * @param inactivityThresholdMs maximum idle time, in milliseconds, before a new chat session starts
      */
     public ChatService(Repository chatRepository, EmbeddingRepository embeddingRepository,
-            DoraAgent doraAgent, int maxResults, double minScore, long inactivityThresholdMs) {
+            TwrAgent twrAgent, int maxResults, double minScore, long inactivityThresholdMs) {
         this.chatRepository = chatRepository;
         this.embeddingRepository = embeddingRepository;
-        this.doraAgent = doraAgent;
+        this.twrAgent = twrAgent;
         this.maxResults = maxResults;
         this.minScore = minScore;
         this.inactivityThresholdMs = inactivityThresholdMs;
@@ -102,7 +102,7 @@ public class ChatService implements ChatUseCase {
 
         StringBuilder buffer = new StringBuilder();
 
-        return doraAgent.answer(phoneNumber, context, message)
+        return twrAgent.answer(phoneNumber, context, message)
                 .invoke(buffer::append)
                 .onCompletion().invoke(() -> {
                     AgentMessage agentMessage = new AgentMessage();
