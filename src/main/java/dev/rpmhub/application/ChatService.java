@@ -11,12 +11,13 @@ package dev.rpmhub.application;
 
 import java.util.Date;
 
+import dev.rpmhub.adapter.out.ai.ConnectiveAgent;
+import dev.rpmhub.adapter.out.ai.ExpansionAgent;
 import dev.rpmhub.domain.model.AgentMessage;
 import dev.rpmhub.domain.model.Chat;
-import dev.rpmhub.domain.model.RagQuery;
-import dev.rpmhub.domain.model.RagResponse;
+import dev.rpmhub.domain.model.TutorActivity;
+import dev.rpmhub.domain.model.TutorCommand;
 import dev.rpmhub.domain.model.User;
-import dev.rpmhub.adapter.out.ai.TwrAgent;
 import dev.rpmhub.domain.model.UserMessage;
 import dev.rpmhub.domain.port.in.ChatUseCase;
 import dev.rpmhub.domain.port.out.EmbeddingRepository;
@@ -24,38 +25,27 @@ import dev.rpmhub.domain.port.out.Repository;
 import io.smallrye.mutiny.Multi;
 
 /**
- * Application service that orchestrates chat acceptance and RAG-grounded
- * assistant replies.
+ * Application service that orchestrates the WhatsApp chat flow.
  *
- * <p>This class is deliberately framework-agnostic (plain Java) so it can be
- * unit tested without a CDI container. Its lifecycle and wiring are handled by
+ * <p>A new conversation starts when the student has been idle longer than the
+ * inactivity threshold. That conversation has no specialist until the student
+ * sends {@code \conectivos} or {@code \expansao}. Redis memory stays keyed by
+ * the phone number.
+ *
+ * <p>Framework-agnostic (plain Java), wired by
  * {@code dev.rpmhub.adapter.config.ApplicationBeans}.
  *
  * @author Rodrigo Prestes Machado
  */
 public class ChatService implements ChatUseCase {
 
-    /** Fallback context string used when no relevant chunk is found. */
-    private static final String DEFAULT_CONTEXT = "";
-
-    /**
-     * Repository used to load and store the last chat per user.
-     */
+    /** Repository used to load and store the last chat per phone number. */
     private final Repository chatRepository;
 
-    /** Repository used to search embedding chunks relevant to the message. */
-    private final EmbeddingRepository embeddingRepository;
+    /** Calls the specialist stored on the conversation. */
+    private final SkillReply skillReply;
 
-    /** AI service used to generate a streaming reply grounded in retrieved context. */
-    private final TwrAgent twrAgent;
-
-    /** Number of context chunks retrieved per message ({@code rag.max-results}). */
-    private final int maxResults;
-
-    /** Minimum similarity score required for a retrieved chunk to be used as context ({@code rag.min-score}). */
-    private final double minScore;
-
-    /** Maximum idle time, in milliseconds, before a new chat session starts ({@code chat.inactivity-threshold-minutes}). */
+    /** Maximum idle time, in milliseconds, before a new chat session starts. */
     private final long inactivityThresholdMs;
 
     /**
@@ -63,18 +53,18 @@ public class ChatService implements ChatUseCase {
      *
      * @param chatRepository        port used to persist chats
      * @param embeddingRepository   port for vector-similarity search
-     * @param twrAgent             AI service used to generate contextual replies
+     * @param connectiveAgent       specialist for connectives
+     * @param expansionAgent        specialist for sentence expansion
      * @param maxResults            number of context chunks retrieved per message
-     * @param minScore              minimum similarity score required for a retrieved chunk to be used as context
+     * @param minScore              minimum similarity score required for a retrieved chunk
      * @param inactivityThresholdMs maximum idle time, in milliseconds, before a new chat session starts
      */
     public ChatService(Repository chatRepository, EmbeddingRepository embeddingRepository,
-            TwrAgent twrAgent, int maxResults, double minScore, long inactivityThresholdMs) {
+            ConnectiveAgent connectiveAgent, ExpansionAgent expansionAgent,
+            int maxResults, double minScore, long inactivityThresholdMs) {
         this.chatRepository = chatRepository;
-        this.embeddingRepository = embeddingRepository;
-        this.twrAgent = twrAgent;
-        this.maxResults = maxResults;
-        this.minScore = minScore;
+        this.skillReply = new SkillReply(chatRepository, embeddingRepository, connectiveAgent, expansionAgent,
+                maxResults, minScore);
         this.inactivityThresholdMs = inactivityThresholdMs;
     }
 
@@ -93,24 +83,37 @@ public class ChatService implements ChatUseCase {
 
         Chat lastChat = chatRepository.findLastByPhone(phoneNumber).orElse(null);
         Chat chat = Chat.accept(lastChat, userMessage, inactivityThresholdMs);
+
+        TutorActivity command = TutorCommand.parse(message);
+        if (command != null) {
+            boolean firstChoice = chat.getTutorActivity() == null;
+            chat.setTutorActivity(command);
+            chatRepository.save(chat);
+            String prompt = firstChoice ? TutorTexts.FIRST_EXERCISE : TutorTexts.NEXT_EXERCISE;
+            return skillReply.answer(chat, phoneNumber, prompt);
+        }
+
         chatRepository.save(chat);
+        if (chat.getTutorActivity() == null) {
+            return fixedReply(chat, TutorTexts.WHATSAPP_CHOICE);
+        }
+        return skillReply.answer(chat, phoneNumber, message);
+    }
 
-        RagQuery query = new RagQuery(message, maxResults, minScore);
-        RagResponse ragResponse = embeddingRepository.searchChunks(query);
-        String context = ragResponse.getContexts().isEmpty()
-                ? DEFAULT_CONTEXT : String.join("\n\n", ragResponse.getContexts());
-
-        StringBuilder buffer = new StringBuilder();
-
-        return twrAgent.answer(phoneNumber, context, message)
-                .invoke(buffer::append)
-                .onCompletion().invoke(() -> {
-                    AgentMessage agentMessage = new AgentMessage();
-                    agentMessage.setMessage(buffer.toString());
-                    agentMessage.setTimestamp(new Date());
-                    chat.addMessage(agentMessage);
-                    chatRepository.save(chat);
-                });
+    /**
+     * Stores a fixed assistant message and returns it as a single chunk.
+     *
+     * @param chat the conversation that already contains the student message
+     * @param text the assistant text
+     * @return a multi that emits {@code text}
+     */
+    private Multi<String> fixedReply(Chat chat, String text) {
+        AgentMessage agentMessage = new AgentMessage();
+        agentMessage.setMessage(text);
+        agentMessage.setTimestamp(new Date());
+        chat.addMessage(agentMessage);
+        chatRepository.save(chat);
+        return Multi.createFrom().item(text);
     }
 
 }

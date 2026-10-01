@@ -44,26 +44,6 @@ public class AuthServiceImpl implements AuthPort {
     }
 
     @Override
-    public String extractUserHash(String jwtToken) {
-        JsonNode claims = decodePayload(jwtToken);
-        if (!claims.has("c_hash")) {
-            throw new IllegalArgumentException(
-                    "Hash not found in JWT token. Available claims: " + claims.fieldNames());
-        }
-        return claims.get("c_hash").asText();
-    }
-
-    @Override
-    public String extractEmail(String jwtToken) {
-        JsonNode claims = decodePayload(jwtToken);
-        if (!claims.has("email")) {
-            throw new IllegalArgumentException(
-                    "Email not found in JWT token. Available claims: " + claims.fieldNames());
-        }
-        return claims.get("email").asText();
-    }
-
-    @Override
     public User resolveUser(String jwtToken) {
         JsonNode claims = decodePayload(jwtToken);
         User user = new User();

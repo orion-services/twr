@@ -19,22 +19,6 @@ import dev.rpmhub.domain.model.User;
 public interface AuthPort {
 
     /**
-     * Extracts the {@code c_hash} claim (Orion Users identifier) from the given JWT.
-     *
-     * @param jwtToken the raw JWT token (without the {@code Bearer} prefix)
-     * @return the Orion Users hash
-     */
-    String extractUserHash(String jwtToken);
-
-    /**
-     * Extracts the {@code email} claim from the given JWT.
-     *
-     * @param jwtToken the raw JWT token (without the {@code Bearer} prefix)
-     * @return the user email
-     */
-    String extractEmail(String jwtToken);
-
-    /**
      * Resolves the {@link User} identified by the given JWT token, decoding its claims.
      *
      * @param jwtToken the raw JWT token (without the {@code Bearer} prefix)

@@ -57,6 +57,12 @@ public class Chat {
     private String title;
 
     /**
+     * Specialist that answers this conversation. Null until the student chooses one.
+     * On the web the choice is fixed at creation. On WhatsApp a command may replace it.
+     */
+    private TutorActivity tutorActivity;
+
+    /**
      * Starts a new empty chat for the given user.
      *
      * @param user the user that owns the chat
@@ -253,6 +259,24 @@ public class Chat {
      */
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    /**
+     * Returns the specialist assigned to this conversation.
+     *
+     * @return the activity, or {@code null} when the student has not chosen yet
+     */
+    public TutorActivity getTutorActivity() {
+        return tutorActivity;
+    }
+
+    /**
+     * Sets the specialist assigned to this conversation.
+     *
+     * @param tutorActivity the activity to set, or {@code null} to clear it
+     */
+    public void setTutorActivity(TutorActivity tutorActivity) {
+        this.tutorActivity = tutorActivity;
     }
 
 }

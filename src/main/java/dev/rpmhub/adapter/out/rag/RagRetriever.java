@@ -63,8 +63,6 @@ public class RagRetriever implements EmbeddingRepository {
                 .map(match -> match.embedded().text())
                 .toList();
 
-        double score = matches.isEmpty() ? 0.0 : matches.get(0).score();
-
-        return new RagResponse(query.getQuery(), contexts, score);
+        return new RagResponse(contexts);
     }
 }

@@ -58,9 +58,9 @@ api.interceptors.response.use(
 
 export const apiService = {
   // Conversas
-  async createConversation(userId, title) {
+  async createConversation(userId, title, activity) {
     try {
-      const response = await api.post(`/twr/users/${userId}/conversations`, { title });
+      const response = await api.post(`/twr/users/${userId}/conversations`, { title, activity });
       if (!response.data || !response.data.id) {
         throw new Error('Resposta inválida do servidor: conversa criada sem ID');
       }
@@ -96,6 +96,11 @@ export const apiService = {
     return response.data;
   },
 
+  async assignActivity(conversationId, activity) {
+    const response = await api.patch(`/twr/conversations/${conversationId}/activity`, { activity });
+    return response.data;
+  },
+
   // Memória
   async getMemory(userId, conversationId) {
     try {
@@ -113,14 +118,30 @@ export const apiService = {
 
   // Chatbot SSE (usando fetch com stream)
   async createChatbotStream(conversationId, prompt, onMessage, onError, onComplete) {
+    return streamSse(`${API_BASE_URL}/twr/chatbot`, {
+      conversationId: conversationId,
+      prompt: prompt
+    }, onMessage, onError, onComplete);
+  },
+
+  async startExerciseStream(conversationId, onMessage, onError, onComplete) {
+    return streamSse(
+      `${API_BASE_URL}/twr/conversations/${conversationId}/exercise`,
+      {},
+      onMessage,
+      onError,
+      onComplete
+    );
+  }
+};
+
+async function streamSse(url, body, onMessage, onError, onComplete) {
     const token = localStorage.getItem('jwt_token');
     if (!token) {
       onError(new Error('Token de autenticação não encontrado'));
       return;
     }
 
-    const url = `${API_BASE_URL}/twr/chatbot`;
-    
     let response;
     try {
       response = await fetch(url, {
@@ -130,10 +151,7 @@ export const apiService = {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream'
         },
-        body: JSON.stringify({
-          conversationId: conversationId,
-          prompt: prompt
-        })
+        body: JSON.stringify(body)
       });
     } catch (error) {
       onError(new Error(`Erro de conexão: ${error.message}`));
@@ -258,6 +276,5 @@ export const apiService = {
         // Ignorar erro ao liberar lock
       }
     }
-  }
-};
+}
 

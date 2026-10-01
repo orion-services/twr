@@ -14,11 +14,10 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-import dev.rpmhub.adapter.out.ai.TwrAgent;
-import dev.rpmhub.domain.model.AgentMessage;
+import dev.rpmhub.adapter.out.ai.ConnectiveAgent;
+import dev.rpmhub.adapter.out.ai.ExpansionAgent;
 import dev.rpmhub.domain.model.Chat;
-import dev.rpmhub.domain.model.RagQuery;
-import dev.rpmhub.domain.model.RagResponse;
+import dev.rpmhub.domain.model.TutorActivity;
 import dev.rpmhub.domain.model.User;
 import dev.rpmhub.domain.model.UserMessage;
 import dev.rpmhub.domain.port.in.ConversationUseCase;
@@ -28,9 +27,8 @@ import io.smallrye.mutiny.Multi;
 
 /**
  * Application service that orchestrates the authenticated web conversation flow:
- * explicit, user-created conversations (as opposed to the WhatsApp channel's
- * inactivity-based chats, see {@link ChatService}), each with memory isolated by
- * conversation id.
+ * explicit, user-created conversations, each answered by a single specialist
+ * chosen at creation. Memory is isolated by conversation id.
  *
  * <p>Framework-agnostic (plain Java), wired by
  * {@code dev.rpmhub.adapter.config.ApplicationBeans}.
@@ -39,49 +37,38 @@ import io.smallrye.mutiny.Multi;
  */
 public class ConversationService implements ConversationUseCase {
 
-    /** Fallback context string used when no relevant chunk is found. */
-    private static final String DEFAULT_CONTEXT = "";
-
     /** Repository used to load and store conversations. */
     private final Repository repository;
 
-    /** Repository used to search embedding chunks relevant to the message. */
-    private final EmbeddingRepository embeddingRepository;
-
-    /** AI service used to generate a streaming reply grounded in retrieved context. */
-    private final TwrAgent twrAgent;
-
-    /** Number of context chunks retrieved per message ({@code rag.max-results}). */
-    private final int maxResults;
-
-    /**
-     * Minimum similarity score required for a retrieved chunk to be used as context
-     * ({@code rag.min-score}).
-     */
-    private final double minScore;
+    /** Calls the specialist stored on the conversation. */
+    private final SkillReply skillReply;
 
     /**
      * Creates the conversation service with its driven ports.
      *
-     * @param repository           port used to persist conversations
-     * @param embeddingRepository  port for vector-similarity search
-     * @param twrAgent             AI service used to generate contextual replies
-     * @param maxResults           number of context chunks retrieved per message
-     * @param minScore             minimum similarity score required for a retrieved chunk
+     * @param repository          port used to persist conversations
+     * @param embeddingRepository port for vector-similarity search
+     * @param connectiveAgent     specialist for connectives
+     * @param expansionAgent      specialist for sentence expansion
+     * @param maxResults          number of context chunks retrieved per message
+     * @param minScore            minimum similarity score required for a retrieved chunk
      */
     public ConversationService(Repository repository, EmbeddingRepository embeddingRepository,
-            TwrAgent twrAgent, int maxResults, double minScore) {
+            ConnectiveAgent connectiveAgent, ExpansionAgent expansionAgent,
+            int maxResults, double minScore) {
         this.repository = repository;
-        this.embeddingRepository = embeddingRepository;
-        this.twrAgent = twrAgent;
-        this.maxResults = maxResults;
-        this.minScore = minScore;
+        this.skillReply = new SkillReply(repository, embeddingRepository, connectiveAgent, expansionAgent,
+                maxResults, minScore);
     }
 
     @Override
-    public Chat createConversation(User user, String title) {
+    public Chat createConversation(User user, String title, TutorActivity activity) {
+        if (activity == null) {
+            throw new IllegalArgumentException("A conversa precisa de uma habilidade");
+        }
         Chat chat = Chat.start(user);
         chat.setTitle(title);
+        chat.setTutorActivity(activity);
         repository.save(chat);
         return chat;
     }
@@ -105,14 +92,43 @@ public class ConversationService implements ConversationUseCase {
     }
 
     @Override
+    public Chat assignActivity(String conversationId, String orionUserHash, TutorActivity activity) {
+        if (activity == null) {
+            throw new IllegalArgumentException("A conversa precisa de uma habilidade");
+        }
+        Chat chat = ownedConversation(conversationId, orionUserHash);
+        if (chat.getTutorActivity() != null) {
+            throw new IllegalStateException("A habilidade desta conversa já foi escolhida");
+        }
+        chat.setTutorActivity(activity);
+        repository.save(chat);
+        return chat;
+    }
+
+    @Override
     public void deleteConversation(String conversationId, String orionUserHash) {
         ownedConversation(conversationId, orionUserHash);
         repository.deleteConversation(conversationId);
     }
 
     @Override
+    public Multi<String> startExercise(User user, String conversationId) {
+        Chat chat = ownedConversation(conversationId, user.getOrionUserHash());
+        if (chat.getTutorActivity() == null) {
+            throw new IllegalStateException("Conversa sem habilidade");
+        }
+        if (!chat.getMessages().isEmpty()) {
+            return Multi.createFrom().empty();
+        }
+        return skillReply.answer(chat, conversationId, TutorTexts.FIRST_EXERCISE);
+    }
+
+    @Override
     public Multi<String> chat(User user, String conversationId, String prompt) {
         Chat chat = ownedConversation(conversationId, user.getOrionUserHash());
+        if (chat.getTutorActivity() == null) {
+            throw new IllegalStateException("Conversa sem habilidade");
+        }
 
         UserMessage userMessage = new UserMessage();
         userMessage.setUser(user);
@@ -121,22 +137,7 @@ public class ConversationService implements ConversationUseCase {
         chat.addMessage(userMessage);
         repository.save(chat);
 
-        RagQuery query = new RagQuery(prompt, maxResults, minScore);
-        RagResponse ragResponse = embeddingRepository.searchChunks(query);
-        String context = ragResponse.getContexts().isEmpty()
-                ? DEFAULT_CONTEXT : String.join("\n\n", ragResponse.getContexts());
-
-        StringBuilder buffer = new StringBuilder();
-
-        return twrAgent.answer(conversationId, context, prompt)
-                .invoke(buffer::append)
-                .onCompletion().invoke(() -> {
-                    AgentMessage agentMessage = new AgentMessage();
-                    agentMessage.setMessage(buffer.toString());
-                    agentMessage.setTimestamp(new Date());
-                    chat.addMessage(agentMessage);
-                    repository.save(chat);
-                });
+        return skillReply.answer(chat, conversationId, prompt);
     }
 
     /**

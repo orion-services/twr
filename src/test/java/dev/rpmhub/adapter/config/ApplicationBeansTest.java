@@ -13,8 +13,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import dev.rpmhub.adapter.out.ai.TwrAgent;
+import dev.rpmhub.adapter.out.ai.ConnectiveAgent;
+import dev.rpmhub.adapter.out.ai.ExpansionAgent;
 import dev.rpmhub.application.ChatService;
+import dev.rpmhub.application.TutorTexts;
 import dev.rpmhub.domain.model.RagQuery;
 import dev.rpmhub.domain.model.RagResponse;
 import dev.rpmhub.domain.port.in.ChatUseCase;
@@ -46,10 +48,16 @@ class ApplicationBeansTest {
     private EmbeddingRepository embeddingRepository;
 
     /**
-     * Driven port mocked to isolate the wiring under test.
+     * Connectives specialist mocked to isolate the wiring under test.
      */
     @Mock
-    private TwrAgent twrAgent;
+    private ConnectiveAgent connectiveAgent;
+
+    /**
+     * Expansion specialist mocked to isolate the wiring under test.
+     */
+    @Mock
+    private ExpansionAgent expansionAgent;
 
     /**
      * Wiring class under test.
@@ -64,7 +72,8 @@ class ApplicationBeansTest {
         applicationBeans = new ApplicationBeans();
         applicationBeans.chatRepository = chatRepository;
         applicationBeans.embeddingRepository = embeddingRepository;
-        applicationBeans.twrAgent = twrAgent;
+        applicationBeans.connectiveAgent = connectiveAgent;
+        applicationBeans.expansionAgent = expansionAgent;
     }
 
     /**
@@ -75,13 +84,15 @@ class ApplicationBeansTest {
     void chatUseCase_producesChatServiceWiredWithInjectedPorts() {
         when(chatRepository.findLastByPhone("5511999999999")).thenReturn(Optional.empty());
         when(embeddingRepository.searchChunks(org.mockito.ArgumentMatchers.any(RagQuery.class)))
-                .thenReturn(new RagResponse("oi", List.of(), 0.0));
-        when(twrAgent.answer("5511999999999", "", "oi")).thenReturn(Multi.createFrom().items("resposta"));
+                .thenReturn(new RagResponse(List.of()));
+        when(connectiveAgent.answer("5511999999999", "", TutorTexts.FIRST_EXERCISE))
+                .thenReturn(Multi.createFrom().items("resposta"));
 
         ChatUseCase chatUseCase = applicationBeans.chatUseCase();
 
         assertInstanceOf(ChatService.class, chatUseCase);
-        List<String> chunks = chatUseCase.chat("5511999999999", "oi").collect().asList().await().indefinitely();
+        List<String> chunks = chatUseCase.chat("5511999999999", "\\conectivos")
+                .collect().asList().await().indefinitely();
         assertEquals(List.of("resposta"), chunks);
     }
 

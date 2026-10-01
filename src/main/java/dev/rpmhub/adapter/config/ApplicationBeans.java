@@ -9,7 +9,8 @@
  */
 package dev.rpmhub.adapter.config;
 
-import dev.rpmhub.adapter.out.ai.TwrAgent;
+import dev.rpmhub.adapter.out.ai.ConnectiveAgent;
+import dev.rpmhub.adapter.out.ai.ExpansionAgent;
 import dev.rpmhub.application.ChatService;
 import dev.rpmhub.application.ConversationService;
 import dev.rpmhub.application.IngestService;
@@ -53,9 +54,13 @@ public class ApplicationBeans {
     @Inject
     WebScraperPort webScraperPort;
 
-    /** LangChain4j AI service that streams replies grounded in RAG-retrieved context. */
+    /** Specialist that practices textual connectives. */
     @Inject
-    TwrAgent twrAgent;
+    ConnectiveAgent connectiveAgent;
+
+    /** Specialist that practices sentence expansion. */
+    @Inject
+    ExpansionAgent expansionAgent;
 
     /** Number of context chunks retrieved per message. */
     @ConfigProperty(name = "rag.max-results", defaultValue = "3")
@@ -78,8 +83,8 @@ public class ApplicationBeans {
     @ApplicationScoped
     public ChatUseCase chatUseCase() {
         long inactivityThresholdMs = chatInactivityThresholdMinutes * 60_000L;
-        return new ChatService(chatRepository, embeddingRepository, twrAgent, ragMaxResults, ragMinScore,
-                inactivityThresholdMs);
+        return new ChatService(chatRepository, embeddingRepository, connectiveAgent, expansionAgent,
+                ragMaxResults, ragMinScore, inactivityThresholdMs);
     }
 
     /**
@@ -91,7 +96,8 @@ public class ApplicationBeans {
     @Produces
     @ApplicationScoped
     public ConversationUseCase conversationUseCase() {
-        return new ConversationService(chatRepository, embeddingRepository, twrAgent, ragMaxResults, ragMinScore);
+        return new ConversationService(chatRepository, embeddingRepository, connectiveAgent, expansionAgent,
+                ragMaxResults, ragMinScore);
     }
 
     /**

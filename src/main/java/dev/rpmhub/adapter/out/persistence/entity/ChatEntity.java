@@ -13,9 +13,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import dev.rpmhub.domain.model.TutorActivity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
@@ -63,6 +66,13 @@ public class ChatEntity {
      */
     @Column(name = "title", length = 255)
     private String title;
+
+    /**
+     * Specialist that answers this conversation. Null until the student chooses one.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tutor_activity", length = 32)
+    private TutorActivity tutorActivity;
 
     /**
      * Instant when this chat was started.
@@ -165,6 +175,24 @@ public class ChatEntity {
      */
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    /**
+     * Returns the specialist assigned to this conversation.
+     *
+     * @return the activity, or {@code null} when not chosen
+     */
+    public TutorActivity getTutorActivity() {
+        return tutorActivity;
+    }
+
+    /**
+     * Sets the specialist assigned to this conversation.
+     *
+     * @param tutorActivity the activity to set
+     */
+    public void setTutorActivity(TutorActivity tutorActivity) {
+        this.tutorActivity = tutorActivity;
     }
 
     /**

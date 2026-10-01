@@ -29,7 +29,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * Implementation of {@link SpeechToTextPort} using the OpenAI Whisper API. This adapter is
- * independent from the Ollama-based chat model used by {@code TwrAgent}; it only needs an
+ * independent from the Ollama-based chat model used by the specialist agents; it only needs an
  * OpenAI API key so that WhatsApp voice notes can be transcribed before being handed to the
  * regular chat pipeline.
  *
