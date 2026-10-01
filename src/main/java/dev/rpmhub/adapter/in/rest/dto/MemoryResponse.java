@@ -13,6 +13,7 @@ import java.util.List;
 
 import dev.rpmhub.domain.model.Chat;
 import dev.rpmhub.domain.model.Message;
+import dev.rpmhub.domain.model.TutorActivity;
 
 /**
  * Response body for {@code GET /twr/memory}: the persisted message history of a
@@ -29,6 +30,12 @@ public class MemoryResponse {
     /** Identifier of the conversation this memory belongs to. */
     public String conversationId;
 
+    /**
+     * Specialist that answers this conversation, or {@code null} when the student
+     * has not chosen yet.
+     */
+    public TutorActivity tutorActivity;
+
     /** Messages in chronological order. */
     public List<Message> messages;
 
@@ -42,6 +49,7 @@ public class MemoryResponse {
         MemoryResponse response = new MemoryResponse();
         response.userId = chat.getUser() != null ? chat.getUser().getOrionUserHash() : null;
         response.conversationId = chat.getId();
+        response.tutorActivity = chat.getTutorActivity();
         response.messages = chat.getMessages();
         return response;
     }

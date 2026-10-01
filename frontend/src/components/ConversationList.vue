@@ -9,7 +9,7 @@
             <v-btn 
               type="button"
               color="primary" 
-              @click.stop.prevent="createNewConversation"
+              @click.stop.prevent="openExerciseChoice"
               :loading="creatingConversation"
               :disabled="creatingConversation"
             >
@@ -67,18 +67,27 @@
         </v-snackbar>
       </v-col>
     </v-row>
+    <ExerciseChoiceDialog
+      v-model="choiceOpen"
+      :loading="creatingConversation"
+      @choose="createNewConversation"
+      @cancel="choiceOpen = false"
+    />
   </v-container>
 </template>
 
 <script>
 import { apiService } from '../services/api';
 import { authService } from '../services/auth';
+import { exerciseTitle } from '../services/exerciseChoice';
 import ConversationItem from './ConversationItem.vue';
+import ExerciseChoiceDialog from './ExerciseChoiceDialog.vue';
 
 export default {
   name: 'ConversationList',
   components: {
-    ConversationItem
+    ConversationItem,
+    ExerciseChoiceDialog
   },
   data() {
     return {
@@ -86,6 +95,7 @@ export default {
       loading: false,
       search: '',
       creatingConversation: false,
+      choiceOpen: false,
       showError: false,
       errorMessage: ''
     };
@@ -122,14 +132,16 @@ export default {
       }
     },
 
-    async createNewConversation(event) {
-      // Prevent default behavior (navigation, submit, etc)
+    openExerciseChoice(event) {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
       }
+      this.choiceOpen = true;
+    },
 
+    async createNewConversation(activity) {
       const user = authService.getUser();
       if (!user || !user.id) {
         this.$router.push('/login');
@@ -141,9 +153,8 @@ export default {
       this.errorMessage = '';
 
       try {
-        console.log('Creating new conversation for user:', user.id);
-        // Create conversation in database before navigating
-        const conversation = await apiService.createConversation(user.id, 'New Conversation');
+        console.log('Creating new conversation for user:', user.id, activity);
+        const conversation = await apiService.createConversation(user.id, exerciseTitle(activity), activity);
         console.log('Conversation created successfully:', conversation);
         console.log('Response type:', typeof conversation);
         console.log('Conversation ID:', conversation?.id);
@@ -157,7 +168,9 @@ export default {
           console.error('Response without ID:', conversation);
           throw new Error('Invalid server response: conversation created without ID');
         }
-        
+
+        this.choiceOpen = false;
+
         // Navigate to chat screen with the created conversation ID
         const chatRoute = `/chat/${conversation.id}`;
         console.log('Navigating to:', chatRoute);

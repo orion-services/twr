@@ -72,6 +72,7 @@ public class ChatRepository implements Repository, PanacheRepositoryBase<ChatEnt
         entity.setOrionUserHash(chat.getUser().getOrionUserHash());
         entity.setUserEmail(chat.getUser().getEmail());
         entity.setTitle(chat.getTitle());
+        entity.setTutorActivity(chat.getTutorActivity());
         entity.setStartedAt(toInstant(chat.getStartedAt()));
         entity.getMessages().clear();
 
@@ -151,6 +152,7 @@ public class ChatRepository implements Repository, PanacheRepositoryBase<ChatEnt
         chat.setId(entity.getId());
         chat.setUser(user);
         chat.setTitle(entity.getTitle());
+        chat.setTutorActivity(entity.getTutorActivity());
         chat.setStartedAt(toDate(entity.getStartedAt()));
 
         List<Message> messages = new ArrayList<>();

@@ -12,20 +12,14 @@ package dev.rpmhub.adapter.in.rest.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * Request body used to create or rename a conversation.
+ * Request body that assigns a specialist to a conversation that does not have one yet.
  *
  * @author Rodrigo Prestes Machado
  */
-public class ConversationRequest {
+public class ActivityRequest {
 
-    /** Human-readable title for the conversation. */
+    /** {@code CONNECTIVES} or {@code EXPANSION}. */
     @NotBlank
-    public String title;
-
-    /**
-     * Specialist chosen at creation ({@code CONNECTIVES} or {@code EXPANSION}).
-     * Ignored when the same body is used only to rename a conversation.
-     */
     public String activity;
 
 }

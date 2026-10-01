@@ -80,6 +80,12 @@
         <v-icon aria-hidden="true">mdi-send</v-icon>
       </v-btn>
     </div>
+    <ExerciseChoiceDialog
+      v-model="choiceOpen"
+      :loading="creatingConversation"
+      @choose="onExerciseChosen"
+      @cancel="cancelExerciseChoice"
+    />
   </div>
 </template>
 
@@ -90,6 +96,8 @@ import 'highlight.js/styles/github-dark.css';
 import { apiService } from '../services/api';
 import { authService } from '../services/auth';
 import { normalizePersistedMessages } from '../services/messageHistory';
+import { exerciseTitle } from '../services/exerciseChoice';
+import ExerciseChoiceDialog from './ExerciseChoiceDialog.vue';
 
 // breaks:true: útil para respostas da IA com quebras simples; listas/código continuam com regras GFM
 marked.use({
@@ -107,6 +115,9 @@ marked.use({
 
 export default {
   name: 'ChatInterface',
+  components: {
+    ExerciseChoiceDialog
+  },
   computed: {
     isTyping() {
       if (!this.isLoading) return false;
@@ -122,7 +133,11 @@ export default {
       initializing: true,
       error: null,
       conversationId: null,
-      userId: null
+      userId: null,
+      tutorActivity: null,
+      choiceOpen: false,
+      choicePurpose: null,
+      creatingConversation: false
     };
   },
   async mounted() {
@@ -209,30 +224,9 @@ export default {
           // Load message history
           await this.loadHistory();
         } else {
-          // If no conversationId, create new conversation
-          console.log('Creating new conversation for user:', this.userId);
-          try {
-            const conversation = await apiService.createConversation(this.userId, 'New Conversation');
-            console.log('Conversation created:', conversation);
-            
-            if (conversation && conversation.id) {
-              this.conversationId = conversation.id;
-              // Usar replace para não adicionar ao histórico de navegação
-              await this.$router.replace(`/chat/${this.conversationId}`);
-            } else {
-              throw new Error('Invalid response when creating conversation: no ID');
-            }
-          } catch (error) {
-            console.error('Error creating conversation:', error);
-            const errorMessage = error.message || error.response?.data?.message || 'Error creating conversation. Please try again.';
-            this.error = errorMessage;
-            this.initializing = false;
-            // Redirect after showing error
-            setTimeout(() => {
-              this.$router.push('/conversations');
-            }, 3000);
-            return;
-          }
+          this.choicePurpose = 'create';
+          this.choiceOpen = true;
+          return;
         }
 
       } catch (error) {
@@ -328,7 +322,20 @@ export default {
         }
         this.messages = [];
         const memory = await apiService.getMemory(this.userId, this.conversationId);
+        if (!memory) {
+          return;
+        }
+        this.tutorActivity = memory.tutorActivity || null;
         this.messages = normalizePersistedMessages(memory?.messages);
+        if (!this.tutorActivity) {
+          this.choicePurpose = 'assign';
+          this.choiceOpen = true;
+          return;
+        }
+        if (this.messages.length === 0) {
+          this.initializing = false;
+          await this.startFirstExercise();
+        }
       } catch (error) {
         console.error('Error loading history:', error);
         // Do not show fatal error, only log
@@ -371,6 +378,84 @@ export default {
       if (this.contentResizeObserver) {
         this.contentResizeObserver.disconnect();
         this.contentResizeObserver = null;
+      }
+    },
+
+    cancelExerciseChoice() {
+      this.choiceOpen = false;
+      this.$router.push('/conversations');
+    },
+
+    async onExerciseChosen(activity) {
+      this.creatingConversation = true;
+      this.error = null;
+      try {
+        if (this.choicePurpose === 'create') {
+          const conversation = await apiService.createConversation(this.userId, exerciseTitle(activity), activity);
+          if (!conversation || !conversation.id) {
+            throw new Error('Invalid response when creating conversation: no ID');
+          }
+          this.choiceOpen = false;
+          this.tutorActivity = activity;
+          await this.$router.replace(`/chat/${conversation.id}`);
+          return;
+        }
+        await apiService.assignActivity(this.conversationId, activity);
+        this.tutorActivity = activity;
+        this.choiceOpen = false;
+        if (this.messages.length === 0) {
+          await this.startFirstExercise();
+        }
+      } catch (error) {
+        console.error('Error choosing exercise:', error);
+        this.error = error.message || 'Error creating conversation. Please try again.';
+      } finally {
+        this.creatingConversation = false;
+      }
+    },
+
+    async startFirstExercise() {
+      if (!this.conversationId || this.isLoading) {
+        return;
+      }
+      this.isLoading = true;
+      this.error = null;
+      const botMessageIndex = this.messages.length;
+      this.messages.push({
+        type: 'assistant',
+        content: '',
+        isNew: true
+      });
+      this.scrollToBottom();
+      try {
+        await apiService.startExerciseStream(
+          this.conversationId,
+          (data) => {
+            if (this.messages[botMessageIndex]) {
+              const cleanedData = data.replace(/^data:\s*/gm, '').replace(/\r/g, '');
+              if (cleanedData !== null && cleanedData !== undefined) {
+                this.messages[botMessageIndex].content += cleanedData;
+                this.scrollToBottom();
+              }
+            }
+          },
+          (error) => {
+            console.error('Stream error:', error);
+            if (this.messages[botMessageIndex]) {
+              this.messages[botMessageIndex].content = 'Error processing message. Please try again.';
+            }
+            this.error = error.message || 'Error processing message. Check your connection and try again.';
+            this.isLoading = false;
+          },
+          () => {
+            this.isLoading = false;
+            this.scrollToBottom();
+          }
+        );
+      } catch (error) {
+        console.error('Error starting exercise:', error);
+        this.error = error.message || 'Error processing message. Check your connection and try again.';
+        this.isLoading = false;
       }
     },
 

@@ -17,23 +17,23 @@ import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * LangChain4j AI service that acts as Tutor TWR, a writing coach for 7th-grade students.
+ * Specialist that practices textual connectives with one student conversation.
  *
  * @author Rodrigo Prestes Machado
  */
 @RegisterAiService
 @ApplicationScoped
-public interface TwrAgent {
+public interface ConnectiveAgent {
 
     /**
-     * Streams a Tutor TWR reply grounded in the conversation and optional RAG context.
+     * Streams a connective-practice reply grounded in optional RAG context.
      *
-     * @param memoryId stable identifier (phone number) used to isolate conversational memory per user
-     * @param context  relevant passages retrieved from the vector store (may be empty)
-     * @param prompt   the student message
+     * @param memoryId conversation id on the web, phone number on WhatsApp
+     * @param context  relevant passages retrieved from the vector store, possibly empty
+     * @param prompt   the student message, or an internal request for the next exercise
      * @return a multi that emits the response chunks
      */
-    @SystemMessage(fromResource = "/prompts/tutor-twr.md")
+    @SystemMessage(fromResource = "/prompts/connectives.md")
     @UserMessage("Contexto: {context}\n\nPergunta: {prompt}")
     Multi<String> answer(@MemoryId String memoryId, String context, String prompt);
 

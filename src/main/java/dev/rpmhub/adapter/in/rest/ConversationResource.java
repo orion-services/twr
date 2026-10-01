@@ -12,10 +12,12 @@ package dev.rpmhub.adapter.in.rest;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import dev.rpmhub.adapter.in.rest.dto.ActivityRequest;
 import dev.rpmhub.adapter.in.rest.dto.ChatbotRequest;
 import dev.rpmhub.adapter.in.rest.dto.ConversationRequest;
 import dev.rpmhub.adapter.in.rest.dto.MemoryResponse;
 import dev.rpmhub.domain.model.Chat;
+import dev.rpmhub.domain.model.TutorActivity;
 import dev.rpmhub.domain.model.User;
 import dev.rpmhub.domain.port.in.ConversationUseCase;
 import dev.rpmhub.domain.port.out.AuthPort;
@@ -102,7 +104,7 @@ public class ConversationResource {
      * Creates a new conversation for the authenticated user.
      *
      * @param userId  path variable (ignored; resolved from JWT)
-     * @param request conversation creation request with title
+     * @param request conversation creation request with title and specialist
      * @return the created conversation
      */
     @POST
@@ -113,8 +115,9 @@ public class ConversationResource {
     @Blocking
     public Chat createConversation(@PathParam("userId") String userId, @Valid ConversationRequest request) {
         User user = authenticatedUser();
+        TutorActivity activity = requiredActivity(request.activity);
         Log.info("Creating conversation for user: " + user.getOrionUserHash());
-        return conversationUseCase.createConversation(user, request.title);
+        return conversationUseCase.createConversation(user, request.title, activity);
     }
 
     /**
@@ -171,6 +174,59 @@ public class ConversationResource {
         Log.info("Updating conversation title: " + conversationId);
         return handleOwnership(() ->
                 conversationUseCase.renameConversation(conversationId, user.getOrionUserHash(), request.title));
+    }
+
+    /**
+     * Stores the specialist of a conversation that does not have one yet.
+     *
+     * @param conversationId conversation identifier
+     * @param request        body with {@code CONNECTIVES} or {@code EXPANSION}
+     * @return the updated conversation
+     */
+    @PATCH
+    @Path("/conversations/{conversationId}/activity")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed("user")
+    @Blocking
+    public Chat assignActivity(@PathParam("conversationId") String conversationId,
+            @Valid ActivityRequest request) {
+        User user = authenticatedUser();
+        TutorActivity activity = requiredActivity(request.activity);
+        Log.info("Assigning activity " + activity + " to conversation " + conversationId);
+        try {
+            return handleOwnership(() ->
+                    conversationUseCase.assignActivity(conversationId, user.getOrionUserHash(), activity));
+        } catch (IllegalStateException e) {
+            throw new WebApplicationException(e.getMessage(), Response.Status.CONFLICT);
+        }
+    }
+
+    /**
+     * Streams the first exercise of a conversation that has no messages yet.
+     *
+     * @param conversationId the conversation identifier
+     * @return server-sent event stream of the first exercise
+     */
+    @POST
+    @Path("/conversations/{conversationId}/exercise")
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RolesAllowed("user")
+    @Blocking
+    public Multi<String> startExercise(@PathParam("conversationId") String conversationId) {
+        User user;
+        try {
+            user = authenticatedUser();
+        } catch (WebApplicationException e) {
+            return Multi.createFrom().item("data: Erro: Token de autenticação não encontrado\n\n");
+        }
+        Log.info("Starting exercise for conversation: " + conversationId);
+        try {
+            return conversationUseCase.startExercise(user, conversationId)
+                    .onFailure().recoverWithMulti(e -> Multi.createFrom().item(streamError(e)));
+        } catch (SecurityException | NoSuchElementException | IllegalStateException e) {
+            return Multi.createFrom().item(streamError(e));
+        }
     }
 
     /**
@@ -242,16 +298,42 @@ public class ConversationResource {
         Log.info("Chatbot POST - Conversation: " + request.conversationId);
         try {
             return conversationUseCase.chat(user, request.conversationId, request.prompt)
-                    .onFailure().recoverWithMulti(e -> {
-                        String msg = e instanceof SecurityException
-                                ? "Erro: Acesso negado à conversa"
-                                : "Erro: " + (e.getMessage() != null ? e.getMessage() : "Erro desconhecido");
-                        return Multi.createFrom().item("data: " + msg + "\n\n");
-                    });
-        } catch (SecurityException | NoSuchElementException e) {
-            String msg = e instanceof SecurityException ? "Acesso negado à conversa" : e.getMessage();
-            return Multi.createFrom().item("data: Erro: " + msg + "\n\n");
+                    .onFailure().recoverWithMulti(e -> Multi.createFrom().item(streamError(e)));
+        } catch (SecurityException | NoSuchElementException | IllegalStateException e) {
+            return Multi.createFrom().item(streamError(e));
         }
+    }
+
+    /**
+     * Parses a specialist name from the web client.
+     *
+     * @param raw {@code CONNECTIVES} or {@code EXPANSION}
+     * @return the activity
+     * @throws WebApplicationException with status 400 when the value is missing or unknown
+     */
+    private static TutorActivity requiredActivity(String raw) {
+        try {
+            TutorActivity activity = TutorActivity.fromApi(raw);
+            if (activity == null) {
+                throw new WebApplicationException("Escolha conectivos ou expansão", Response.Status.BAD_REQUEST);
+            }
+            return activity;
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(e.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Formats a failure as a single SSE data payload, matching the chatbot error shape.
+     *
+     * @param error the failure
+     * @return an SSE chunk
+     */
+    private static String streamError(Throwable error) {
+        String msg = error instanceof SecurityException
+                ? "Erro: Acesso negado à conversa"
+                : "Erro: " + (error.getMessage() != null ? error.getMessage() : "Erro desconhecido");
+        return "data: " + msg + "\n\n";
     }
 
     /**
