@@ -403,8 +403,7 @@ Authentication and user management service:
 
 ## 📄 License
 
-This project contains confidential and proprietary information.
-Unauthorized copying, distribution, or use of this file or its contents is strictly prohibited.
+Copyright 2026 Rodrigo Prestes Machado
 
-© 2025 Rodrigo Prestes Machado. All rights reserved.
+Licensed under the Apache License, Version 2.0. See [LICENSE](../LICENSE).
 
