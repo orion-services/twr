@@ -91,7 +91,7 @@ class ApplicationBeansTest {
         ChatUseCase chatUseCase = applicationBeans.chatUseCase();
 
         assertInstanceOf(ChatService.class, chatUseCase);
-        List<String> chunks = chatUseCase.chat("5511999999999", "\\conectivos")
+        List<String> chunks = chatUseCase.chat("5511999999999", "\\connectives")
                 .collect().asList().await().indefinitely();
         assertEquals(List.of("resposta"), chunks);
     }

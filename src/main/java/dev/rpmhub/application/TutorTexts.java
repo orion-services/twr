@@ -36,8 +36,8 @@ public final class TutorTexts {
      */
     public static final String WHATSAPP_CHOICE = """
             Que tipo de exercício você deseja fazer?
-            Envie \\conectivos para ligar ideias.
-            Envie \\expansao para acrescentar detalhes à frase.""";
+            Envie \\connectives para ligar ideias.
+            Envie \\expansion para acrescentar detalhes à frase.""";
 
     private TutorTexts() {
     }

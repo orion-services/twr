@@ -101,7 +101,7 @@ class ChatServiceTest {
      */
     @Test
     void chat_reusesChat_whenWithinInactivityThreshold() {
-        chatService.chat(PHONE, "\\conectivos").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "\\connectives").collect().asList().await().indefinitely();
         Chat first = chatRepository.findLastByPhone(PHONE).orElseThrow();
 
         chatService.chat(PHONE, "porque estava doente").collect().asList().await().indefinitely();
@@ -121,7 +121,7 @@ class ChatServiceTest {
      */
     @Test
     void chat_opensNewChat_whenIdleMoreThanThirtyMinutes() {
-        chatService.chat(PHONE, "\\conectivos").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "\\connectives").collect().asList().await().indefinitely();
         Chat first = chatRepository.findLastByPhone(PHONE).orElseThrow();
         first.getUserMessages().get(0).setTimestamp(
                 new java.util.Date(System.currentTimeMillis() - (31 * MINUTE_MS)));
@@ -137,19 +137,19 @@ class ChatServiceTest {
     }
 
     /**
-     * {@code \conectivos} stores the specialist and asks it for the first exercise.
+     * {@code \connectives} stores the specialist and asks it for the first exercise.
      * The command itself is not the prompt the model sees.
      */
     @Test
     void chat_selectsConnectives_andKeepsPhoneAsMemoryId() {
         connectiveAgent.chunks = List.of("res", "pos", "ta");
 
-        List<String> chunks = chatService.chat(PHONE, "\\conectivos").collect().asList().await().indefinitely();
+        List<String> chunks = chatService.chat(PHONE, "\\connectives").collect().asList().await().indefinitely();
 
         assertEquals(List.of("res", "pos", "ta"), chunks);
         Chat chat = chatRepository.findLastByPhone(PHONE).orElseThrow();
         assertEquals(TutorActivity.CONNECTIVES, chat.getTutorActivity());
-        assertEquals("\\conectivos", chat.getUserMessages().get(0).getMessage());
+        assertEquals("\\connectives", chat.getUserMessages().get(0).getMessage());
         assertEquals("resposta", chat.getAgentMessages().get(0).getMessage());
         assertEquals(List.of(PHONE), connectiveAgent.memoryIds);
         assertEquals(List.of(TutorTexts.FIRST_EXERCISE), connectiveAgent.prompts);
@@ -157,11 +157,11 @@ class ChatServiceTest {
     }
 
     /**
-     * {@code \expansao} selects the expansion specialist. An accented command counts too.
+     * {@code \expansion} selects the expansion specialist.
      */
     @Test
-    void chat_selectsExpansion_whenCommandHasAnAccent() {
-        chatService.chat(PHONE, "\\expansão").collect().asList().await().indefinitely();
+    void chat_selectsExpansion_whenCommandIsExpansion() {
+        chatService.chat(PHONE, "\\expansion").collect().asList().await().indefinitely();
 
         Chat chat = chatRepository.findLastByPhone(PHONE).orElseThrow();
         assertEquals(TutorActivity.EXPANSION, chat.getTutorActivity());
@@ -176,10 +176,10 @@ class ChatServiceTest {
      */
     @Test
     void chat_switchesAgent_whenCommandChangesActivity() {
-        chatService.chat(PHONE, "\\conectivos").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "\\connectives").collect().asList().await().indefinitely();
         Chat first = chatRepository.findLastByPhone(PHONE).orElseThrow();
 
-        chatService.chat(PHONE, "\\expansao").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "\\expansion").collect().asList().await().indefinitely();
         Chat second = chatRepository.findLastByPhone(PHONE).orElseThrow();
 
         assertSame(first, second);
@@ -194,12 +194,12 @@ class ChatServiceTest {
      */
     @Test
     void chat_keepsActivity_whenMessageIsNotACommand() {
-        chatService.chat(PHONE, "\\conectivos").collect().asList().await().indefinitely();
-        chatService.chat(PHONE, "quero \\expansao no meio").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "\\connectives").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "quero \\expansion no meio").collect().asList().await().indefinitely();
 
         Chat chat = chatRepository.findLastByPhone(PHONE).orElseThrow();
         assertEquals(TutorActivity.CONNECTIVES, chat.getTutorActivity());
-        assertEquals(List.of(TutorTexts.FIRST_EXERCISE, "quero \\expansao no meio"), connectiveAgent.prompts);
+        assertEquals(List.of(TutorTexts.FIRST_EXERCISE, "quero \\expansion no meio"), connectiveAgent.prompts);
         assertTrue(expansionAgent.prompts.isEmpty());
     }
 
@@ -210,7 +210,7 @@ class ChatServiceTest {
     void chat_forwardsRetrievedContext_toSelectedAgent() {
         embeddingRepository.contexts = List.of("trecho relevante");
 
-        chatService.chat(PHONE, "\\conectivos").collect().asList().await().indefinitely();
+        chatService.chat(PHONE, "\\connectives").collect().asList().await().indefinitely();
 
         assertEquals(List.of("trecho relevante"), connectiveAgent.contexts);
         assertTrue(expansionAgent.contexts.isEmpty());

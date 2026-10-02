@@ -29,7 +29,7 @@ import io.smallrye.mutiny.Multi;
  *
  * <p>A new conversation starts when the student has been idle longer than the
  * inactivity threshold. That conversation has no specialist until the student
- * sends {@code \conectivos} or {@code \expansao}. Redis memory stays keyed by
+ * sends {@code \connectives} or {@code \expansion}. Redis memory stays keyed by
  * the phone number.
  *
  * <p>Framework-agnostic (plain Java), wired by
