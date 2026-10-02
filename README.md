@@ -1,110 +1,113 @@
-# twr
+# TWR
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework, and requires **Java 25**.
+TWR supports writing practice for the 7th grade. It follows The Writing Revolution. Two specialists practice textual connectives and sentence expansion. The student stays the author. The tutor does not write the sentence.
 
-Production runs on a single EC2 instance in São Paulo (`sa-east-1`), provisioned with
-Terraform (`infra/terraform`). Every push to `main` is deployed automatically by a
-self-hosted GitHub Actions runner on that instance — see [docs/aws.md](docs/aws.md).
+## Purpose
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+Students practice while they study. Each conversation stays with one specialist. The tutor explains the next gap and waits. It does not hand over a finished sentence.
 
-## Running the application in dev mode
+Students talk to TWR on the website or on WhatsApp.
 
-You can run your application in dev mode that enables live coding using:
+- On the website, the student chooses the skill when the conversation starts: Conectivos or Expansão. That choice stays with the conversation.
+- On WhatsApp, the student sends `\conectivos` or `\expansao`. Until then, TWR asks which exercise they want. A new WhatsApp session starts after 30 minutes without a message. The same command switches the specialist and asks for the next exercise.
 
-```shell script
-./mvnw quarkus:dev
+Connectives practice cause, contrast, addition, and conclusion. The words are porque, mas, então, embora, além disso, quando, and enquanto.
+
+Expansion practice who, how, when, where, and why. The student turns a short sentence into a fuller one.
+
+Each skill follows the same cycle: four gaps in isolated sentences, a short reflection, four gaps in a short text, another reflection, then a new cycle of the same skill. The tutor uses gaps. It does not grade. It does not rewrite the whole text. It does not ask for the student's name, age, or school. The skill is EF67LP25.
+
+```mermaid
+flowchart LR
+  student[Student]
+  web[Website]
+  whatsapp[WhatsApp]
+  choice[Skill choice]
+  connectives[Connectives tutor]
+  expansion[Expansion tutor]
+  student --> web
+  student --> whatsapp
+  web --> choice
+  whatsapp --> choice
+  choice --> connectives
+  choice --> expansion
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+The website is a Vue 3 app with Vuetify. Sign in uses [Orion Users](https://github.com/orion-services/users), with email and password, Google, and two factor authentication. The server is Quarkus.
 
-### Frontend (Vue) + Orion Users (auth) in dev
+<p align="center">
+  <img src="docs/screenshots/login.png" width="220" alt="Sign in" />
+  <img src="docs/screenshots/conversations.png" width="220" alt="Conversations" />
+  <img src="docs/screenshots/chat.png" width="220" alt="Chat" />
+</p>
 
-The web UI (`frontend/`) authenticates against Orion Users (login/registration/2FA),
-an external service that is **not** part of this repo and must be running for
-login/signup to work — see `docker-compose.yml` (service `orion-users`, built from
-[orion-services/users](https://github.com/orion-services/users)).
+## Documents
 
-```shell script
-# 1. Start Orion Users (+ its own Postgres/Redis, independent from Quarkus Dev
-#    Services used by `quarkus:dev`). Requires a .env — see .env.example.
-cp .env.example .env    # fill in POSTGRES_PASSWORD and Gmail SMTP credentials;
-                        # use the local ORION_USERS_EMAIL_VALIDATION_URL shown there
+The tutors follow the prompts in [connectives.md](src/main/resources/prompts/connectives.md) and [expansion.md](src/main/resources/prompts/expansion.md).
+
+TWR can also read plain text and PDF files from the folder in `rag.location`, and URLs listed in `rag.scrape.urls`. URLs are converted to Markdown. On startup, those documents are indexed and stored as chunks. Each reply may use up to three chunks that pass the similarity threshold. Both settings live in [application.properties](src/main/resources/application.properties). The folder starts empty, and no URLs are configured, so a local conversation is guided by the prompts alone.
+
+## Running locally
+
+You need Java 25, Docker, and [Ollama](https://ollama.com/) with the `gemma3:latest` model. Docker starts Orion Users. Quarkus Dev Services starts the Postgres and Redis databases the application uses in development.
+
+1. Clone this repository.
+2. Copy `.env.example` to `.env`. Set `POSTGRES_PASSWORD` and the Gmail SMTP values Orion Users uses for confirmation mail. For local email confirmation, set `ORION_USERS_EMAIL_VALIDATION_URL` to `http://localhost:8082/users/validateEmail`.
+3. Copy `frontend/.env.example` to `frontend/.env`. The example already points Orion Users at `http://localhost:8082`. Without that file, login calls TWR's own port and fails.
+4. Start Orion Users.
+
+```shell
 docker compose up -d postgres redis orion-users
-# Orion Users is now reachable at http://localhost:8082 (ORION_USERS_HOST_PORT)
+```
 
-# 2. Create frontend/.env once (see the warning below for why this matters)
-cd frontend && cp .env.example .env && cd ..   # VITE_ORION_USERS_URL already defaults to http://localhost:8082
+5. Start the application.
 
-# 3. Run the Quarkus backend as usual — no separate frontend server needed.
+```shell
 ./mvnw quarkus:dev
 ```
 
-`./mvnw quarkus:dev` already builds the Vue app (`frontend-maven-plugin` runs
-`npm install` + `npm run build` on startup) and embeds it into
-`src/main/resources/META-INF/resources/`, served by Quarkus itself on
-<http://localhost:8080>. **There is no need to run a separate `npm run dev` /
-Vite dev server** for normal usage.
+Open <http://localhost:8080>. Quarkus builds the Vue app on startup and serves it. You do not need a separate `npm run dev` for normal use.
 
-The tradeoff: that build only happens once, when `quarkus:dev` starts. If you
-edit anything under `frontend/src/**` while `quarkus:dev` is already running,
-restart it (`Ctrl+C` then `./mvnw quarkus:dev` again) to rebuild and pick up
-the change — Quarkus's live-reload only watches `src/main/java` and
-`src/main/resources`, not `frontend/src`.
+Development chat uses local Ollama (`gemma3:latest`). Production chat uses OpenAI `gpt-4o-mini`. Embeddings stay on the local `all-MiniLM-L6-v2` model, at 384 dimensions, in every profile. `OPENAI_API_KEY` is required in production, and in development only when you want WhatsApp audio transcribed with Whisper.
 
-If you *do* want instant hot-reload while actively developing Vue components,
-you can optionally run a separate Vite dev server instead (`cd frontend && npm
-run dev`, served at `http://localhost:5173`, proxying API calls to `:8080`) —
-but that's a pure convenience for frontend-only iteration, not required.
+The Vue build runs once, when `./mvnw quarkus:dev` starts. If you edit anything under `frontend/src` while development mode is already running, stop it and start it again. Live reload watches `src/main/java` and `src/main/resources` only.
 
-If `frontend/.env` is missing, `VITE_ORION_USERS_URL` silently falls back to
-`http://localhost:8080` — **TWR's own port** — and every login/signup call 404s
-against the Quarkus backend instead of reaching Orion Users. Always create
-`frontend/.env` from `frontend/.env.example` before testing the web UI locally.
+If you want instant reload while you work on Vue components, run this in `frontend`:
 
-## Packaging and running the application
+```shell
+npm run dev
+```
 
-The application can be packaged using:
+Vite then serves the interface at <http://localhost:5173> and proxies API calls to port 8080. That server is only a convenience for frontend work.
 
-```shell script
+The test profile does not start Orion Users. Tests keep the local Ollama model for chat.
+
+In development mode, the Quarkus Dev UI is at <http://localhost:8080/q/dev/>.
+
+WhatsApp is optional. Leave `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` empty and only the website answers.
+
+### Package a jar
+
+```shell
 ./mvnw package
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+Run the result with `java -jar target/quarkus-app/quarkus-run.jar`. Dependencies are copied into `target/quarkus-app/lib/`. This is not an uber jar.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+### Native executable
 
-If you want to build an _über-jar_, execute the following command:
+With GraalVM installed:
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
+```shell
 ./mvnw package -Dnative
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+Without GraalVM, build inside a container:
 
-```shell script
+```shell
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
 ```
 
-You can then execute your native executable with: `./target/twr-1.0.0-runner`
+Run it with `./target/twr-1.0.0-runner`.
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+Production runs on a single EC2 instance in São Paulo (`sa-east-1`). See [docs/aws.md](docs/aws.md).
