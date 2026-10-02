@@ -108,3 +108,9 @@ Without GraalVM, build inside a container:
 Run it with `./target/twr-1.0.0-runner`.
 
 Production runs on a single EC2 instance in São Paulo (`sa-east-1`). See [docs/aws.md](docs/aws.md).
+
+## License
+
+Copyright 2026 Rodrigo Prestes Machado
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
