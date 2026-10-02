@@ -70,14 +70,14 @@ class ConversationServiceTest {
     void chat_callsOnlyTheStoredAgent_withConversationIdAsMemory() {
         Chat created = service.createConversation(user(), "Conectivos", TutorActivity.CONNECTIVES);
 
-        List<String> chunks = service.chat(user(), created.getId(), "\\expansao")
+        List<String> chunks = service.chat(user(), created.getId(), "\\expansion")
                 .collect().asList().await().indefinitely();
 
         assertEquals(List.of("resposta"), chunks);
         Chat loaded = service.getConversation(created.getId()).orElseThrow();
         assertEquals(TutorActivity.CONNECTIVES, loaded.getTutorActivity());
         assertEquals(List.of(created.getId()), connectiveAgent.memoryIds);
-        assertEquals(List.of("\\expansao"), connectiveAgent.prompts);
+        assertEquals(List.of("\\expansion"), connectiveAgent.prompts);
         assertTrue(expansionAgent.prompts.isEmpty());
     }
 

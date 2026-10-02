@@ -315,7 +315,7 @@ public class ConversationResource {
         try {
             TutorActivity activity = TutorActivity.fromApi(raw);
             if (activity == null) {
-                throw new WebApplicationException("Escolha conectivos ou expansão", Response.Status.BAD_REQUEST);
+                throw new WebApplicationException("Choose connectives or expansion", Response.Status.BAD_REQUEST);
             }
             return activity;
         } catch (IllegalArgumentException e) {

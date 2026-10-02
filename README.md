@@ -4,18 +4,15 @@ TWR supports writing practice for the 7th grade. It follows The Writing Revoluti
 
 ## Purpose
 
-Students practice while they study. Each conversation stays with one specialist. The tutor explains the next gap and waits. It does not hand over a finished sentence.
+TWR is a tutor for writing in Portuguese, based on The Writing Revolution. The student learns by writing, rather than by reading rules alone.
 
-Students talk to TWR on the website or on WhatsApp.
+In the conversation, the student chooses one skill. Connectives use *porque*, *mas*, *então*, *embora*, *além disso*, *quando*, and *enquanto*. They express cause, contrast, addition, and conclusion. Expansion turns a short sentence into a fuller one by answering *quem*, *como*, *quando*, *onde*, and *por quê*.
 
-- On the website, the student chooses the skill when the conversation starts: Conectivos or Expansão. That choice stays with the conversation.
-- On WhatsApp, the student sends `\conectivos` or `\expansao`. Until then, TWR asks which exercise they want. A new WhatsApp session starts after 30 minutes without a message. The same command switches the specialist and asks for the next exercise.
+The tutor builds the exercises and the moments of reflection. Those moments follow Zimmerman's theory of self-regulated learning: the student plans, carries out, and evaluates their own writing.
 
-Connectives practice cause, contrast, addition, and conclusion. The words are porque, mas, então, embora, além disso, quando, and enquanto.
+At each step, the tutor explains the next gap and waits for the student's answer. It does not hand over a finished sentence. It does not grade. It does not rewrite the whole text. It does not ask for the student's name, age, or school. The student builds and revises the text. The work follows BNCC skill EF67LP25, practiced from the student's own writing.
 
-Expansion practice who, how, when, where, and why. The student turns a short sentence into a fuller one.
-
-Each skill follows the same cycle: four gaps in isolated sentences, a short reflection, four gaps in a short text, another reflection, then a new cycle of the same skill. The tutor uses gaps. It does not grade. It does not rewrite the whole text. It does not ask for the student's name, age, or school. The skill is EF67LP25.
+Students talk to TWR on the website or on WhatsApp. Each conversation stays with the skill chosen at the start. On the website, the student chooses Connectives or Expansion when the conversation starts. On WhatsApp, the student sends `\connectives` or `\expansion`. Until then, TWR asks which exercise they want. A new WhatsApp session starts after 30 minutes without a message. The same command switches the specialist and asks for the next exercise.
 
 ```mermaid
 flowchart LR

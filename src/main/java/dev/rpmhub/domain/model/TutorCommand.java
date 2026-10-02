@@ -37,8 +37,8 @@ public final class TutorCommand {
         String normalized = Normalizer.normalize(message.trim().toLowerCase(), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
         return switch (normalized) {
-            case "\\conectivos" -> TutorActivity.CONNECTIVES;
-            case "\\expansao" -> TutorActivity.EXPANSION;
+            case "\\connectives" -> TutorActivity.CONNECTIVES;
+            case "\\expansion" -> TutorActivity.EXPANSION;
             default -> null;
         };
     }
