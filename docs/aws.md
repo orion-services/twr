@@ -2,19 +2,25 @@
 
 Este guia cobre o deploy do twr em uma única instância EC2, rodando o app,
 Postgres+pgvector e Redis via Docker Compose, com HTTPS automático via Caddy.
-É a opção mais barata: sem RDS, ElastiCache ou ALB. Em produção o chat usa a
-API da OpenAI (`gpt-4o-mini`) em vez de um LLM local — não é preciso rodar
-Ollama na instância (isso só é usado em desenvolvimento local).
+É a opção mais barata: sem RDS, ElastiCache ou ALB. Em produção o chat
+(`gpt-4o-mini`) e os embeddings (`text-embedding-3-small`) usam a API da
+OpenAI — não é preciso rodar Ollama nem o modelo local de embedding na
+instância (isso só é usado em desenvolvimento local).
 
 A infraestrutura é criada na região **São Paulo (`sa-east-1`)**, e o app roda
 em **Java 25** (Amazon Corretto 25 no host para o build, imagem
 `ubi9/openjdk-25-runtime` no container).
 
-Custo aproximado (região `sa-east-1`, sob demanda): uma `t4g.medium` (2 vCPU /
-4 GiB) fica em torno de US$ 32/mês, mais ~US$ 7/mês para os 60 GiB de EBS
-(gp3, root + data) e centavos para o Elastic IP enquanto associado à
-instância em execução. Considere uma Reserved/Savings Plan ou Spot depois de
-validar a carga.
+Custo aproximado (região `sa-east-1`): uma `t4g.small` (2 vCPU / 2 GiB). O
+compute dessa família entra no trial da AWS de até 750 horas/mês até 31 de
+dezembro de 2026, então uma instância 24/7 fica sem cobrança de CPU nesse
+período. A instância usa crédito de CPU `standard`: passou da linha de base, a
+CPU desacelera, em vez de gerar cobrança de crédito extra. Depois do trial, a
+mesma máquina fica em torno de US$ 20/mês sob demanda (ou cerca de US$ 11/mês
+com Reserved de 1 ano). Os 30 GiB de EBS gp3 (20 GiB de root + 10 GiB de
+dados) ficam em torno de US$ 3 a 4/mês. O IPv4 público em uso custa cerca de
+US$ 0,005/hora (~US$ 3,60/mês), associado ou não a um Elastic IP. Piso com o
+site no ar o tempo todo, até o fim de 2026: disco + IPv4, cerca de US$ 7/mês.
 
 ## Pré-requisitos
 
@@ -60,11 +66,11 @@ terraform apply
 ```
 
 Isso cria, em `sa-east-1`:
-- 1 instância EC2 `t4g.medium` (Amazon Linux 2023, ARM/Graviton) com Docker, Compose, buildx e Amazon Corretto 25
+- 1 instância EC2 `t4g.small` (Amazon Linux 2023, ARM/Graviton, crédito de CPU `standard`, 2 GiB de swap) com Docker, Compose, buildx e Amazon Corretto 25
 - Security Group com apenas as portas 80 e 443 abertas (sem porta 22 — acesso administrativo via SSM)
 - IAM role com a policy `AmazonSSMManagedInstanceCore` (acesso via Session Manager) e permissão de leitura somente no parâmetro `/twr/github-runner-pat`
 - Runner self-hosted do GitHub Actions (label `twr-prod`) instalado como serviço em `/opt/actions-runner`
-- Volume EBS extra (40 GiB) para dados do Postgres/Redis
+- Volume EBS extra (10 GiB) para dados do Postgres/Redis e para as imagens Docker
 - Elastic IP associado à instância
 
 Ao final, anote os outputs:

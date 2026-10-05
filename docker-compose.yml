@@ -4,8 +4,9 @@
 # Services:
 #   caddy        - reverse proxy, automatic HTTPS (Let's Encrypt) for DOMAIN
 #   twr          - the Quarkus app itself (this repo), built from src/main/docker/Dockerfile.jvm.
-#                  Runs the "prod" Quarkus profile, which uses OpenAI (gpt-4o-mini) as the chat
-#                  model instead of Ollama (see application.properties) — no local LLM runtime
+#                  Runs the "prod" Quarkus profile, which uses OpenAI for chat (gpt-4o-mini)
+#                  and embeddings (text-embedding-3-small) instead of Ollama / the local
+#                  MiniLM model (see application-prod.properties) — no local LLM runtime
 #                  needed on the instance.
 #   postgres     - pgvector-enabled Postgres, chat persistence + embeddings storage
 #   redis        - conversation memory store

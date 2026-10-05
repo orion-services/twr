@@ -13,11 +13,13 @@ variable "project_name" {
 variable "instance_type" {
   description = <<-EOT
     EC2 instance type. t4g.* (Graviton/ARM) is cheaper than equivalent x86 (t3.*)
-    instances and is enough to run twr + Postgres + Redis + Ollama (gemma4) on a
-    single box. Bump to t4g.large if Ollama inference feels too slow/OOMs.
+    instances. Production calls OpenAI for chat and embeddings, so t4g.small
+    (2 vCPU / 2 GiB) is enough for twr + Postgres + Redis. t4g.small is included
+    in the AWS free trial (750 hours/month) through 2026-12-31. Bump to
+    t4g.medium if the box swaps heavily outside of deploys.
   EOT
   type        = string
-  default     = "t4g.medium" # 2 vCPU / 4 GiB RAM
+  default     = "t4g.small" # 2 vCPU / 2 GiB RAM
 }
 
 variable "root_volume_size_gb" {
@@ -28,11 +30,12 @@ variable "root_volume_size_gb" {
 
 variable "data_volume_size_gb" {
   description = <<-EOT
-    Size (GiB) of the extra EBS data volume used for Postgres data, Redis data and
-    Ollama model weights (gemma4 alone is a few GB). Mounted at /data by user_data.sh.
+    Size (GiB) of the extra EBS data volume. Mounted at /data by user_data.sh and
+    used for Postgres, Redis and Docker's data-root (image build cache). 10 GiB
+    is the practical floor; smaller fills up on the first deploy.
   EOT
   type        = number
-  default     = 40
+  default     = 10
 }
 
 variable "data_volume_type" {
