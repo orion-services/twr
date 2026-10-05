@@ -3,8 +3,8 @@
 
 # aws_region   = "sa-east-1"
 # project_name = "twr"
-# instance_type = "t4g.medium"
-# data_volume_size_gb = 40
+# instance_type = "t4g.small"
+# data_volume_size_gb = 10
 
 # Self-hosted GitHub Actions runner (registered automatically at boot).
 # github_repo              = "orion-services/twr"

@@ -1,8 +1,9 @@
 ####
 # Low-cost, single-EC2-instance infrastructure for twr.
 #
-# Everything (app + Postgres/pgvector + Redis + Ollama) runs as Docker Compose
-# services on one Graviton (ARM) EC2 instance. No RDS, ElastiCache or ALB — those
+# Everything (app + Postgres/pgvector + Redis) runs as Docker Compose services on
+# one Graviton (ARM) EC2 instance. Production chat and embeddings call OpenAI;
+# Ollama is only used in local development. No RDS, ElastiCache or ALB — those
 # are the main cost drivers we're avoiding here. HTTPS termination is handled by
 # Caddy (see ../../Caddyfile) directly on the instance, and admin access is done
 # via SSM Session Manager instead of an SSH key pair, so the security group does
@@ -180,6 +181,12 @@ resource "aws_instance" "twr" {
     http_tokens = "required" # enforce IMDSv2
   }
 
+  # T4g launches as "unlimited" and bills surplus CPU credits, including during the
+  # t4g.small free trial. "standard" throttles past the baseline instead.
+  credit_specification {
+    cpu_credits = "standard"
+  }
+
   tags = {
     Name    = var.project_name
     Project = var.project_name
@@ -189,8 +196,8 @@ resource "aws_instance" "twr" {
   depends_on = [aws_iam_role_policy.github_runner_pat]
 }
 
-# Extra EBS volume for Postgres/Redis/Ollama data, kept independent from the
-# root volume/instance lifecycle.
+# Extra EBS volume for Postgres, Redis and Docker's data-root, kept independent
+# from the root volume/instance lifecycle.
 resource "aws_ebs_volume" "data" {
   availability_zone = aws_instance.twr.availability_zone
   size              = var.data_volume_size_gb

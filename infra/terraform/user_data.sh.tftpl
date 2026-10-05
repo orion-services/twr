@@ -34,6 +34,16 @@ java -version 2>&1 | grep -q 'version "25' || { echo "ERROR: expected Java 25 as
 systemctl enable --now docker
 usermod -aG docker ec2-user
 
+# t4g.small has 2 GiB of RAM. Deploys build images on this box, so a swap file
+# absorbs that spike instead of the OOM killer. Idempotent across user_data re-runs.
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+fi
+swapon /swapfile || true
+grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
 mkdir -p /usr/libexec/docker/cli-plugins
 ARCH=$(uname -m) # aarch64 on t4g
 
@@ -122,8 +132,8 @@ ln -sfn /usr/libexec/docker/cli-plugins/docker-buildx /home/ec2-user/.docker/cli
 chown -R ec2-user:ec2-user /home/ec2-user/.docker
 
 # ------------------------------------------------------------------
-# Extra EBS data volume -> /data (Postgres/Redis/Ollama persistent data +
-# Docker's data-root, so it's independent from the smaller root volume).
+# Extra EBS data volume -> /data (Postgres, Redis and Docker's data-root,
+# independent from the smaller root volume).
 # ------------------------------------------------------------------
 DATA_DEVICE=""
 for candidate in /dev/nvme1n1 /dev/xvdf /dev/sdf; do
