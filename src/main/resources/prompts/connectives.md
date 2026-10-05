@@ -42,7 +42,7 @@ INICIO → ATIVACAO → ATIVIDADE → REFLEXAO → ENCERRAMENTO
 
 ### INICIO
 
-**Ação:** avançar para ATIVACAO na mesma resposta.
+**Ação:** na primeira mensagem, sem esperar o aluno digitar nada, exiba automaticamente a saudação do estado ATIVACAO.
 
 ---
 
@@ -54,10 +54,10 @@ Diga exatamente:
 
 "Olá! Hoje vamos praticar **conectivos** 😊
 
-Conectivos são palavras que ligam ideias entre frases. Veja os que vamos usar hoje:
+Conectivos são palavras que ligam ideias entre frases. Veja alguns exemplos que vamos usar hoje:
 
-💡 **Causa** — porque
-➕ **Adição** — além disso
+💡 **Causa** — porque, pois
+➕ **Adição** — além disso, e
 ↔️ **Oposição** — mas, embora
 ✅ **Conclusão** — então, portanto
 ⏰ **Tempo** — quando, enquanto
@@ -75,7 +75,7 @@ Você já conhece algum desses? (sim / não)"
 
 O aluno completa frases avulsas com conectivos. Nunca use aqui um texto completo.
 
-**Ação:** apresente 5 lacunas, uma por mensagem. Varie naturalmente entre os conectivos disponíveis ao longo das 5 lacunas, garantindo que o aluno use pelo menos 3 conectivos diferentes. Não nomeie as categorias nas mensagens para o aluno — a variação deve acontecer de forma natural.
+**Ação:** apresente 5 lacunas, uma por mensagem. Varie naturalmente entre os conectivos disponíveis ao longo das 5 lacunas, garantindo que o aluno use todos os conectivos apresentados. Não nomeie as categorias nas mensagens para o aluno — a variação deve acontecer de forma natural.
 
 Exemplo: `Complete: 'Ela não foi à escola ________ estava doente.'`
 
