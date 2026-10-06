@@ -10,24 +10,24 @@
       <v-spacer></v-spacer>
       <v-btn
         icon
-        :aria-label="isDark ? 'Usar tema claro' : 'Usar tema escuro'"
+        :aria-label="isDark ? t('app.lightTheme') : t('app.darkTheme')"
         @click="toggleTheme"
       >
         <v-icon aria-hidden="true">{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
       </v-btn>
-      <v-btn v-if="!isAuthenticated" to="/register" icon aria-label="Registrar">
+      <v-btn v-if="!isAuthenticated" to="/register" icon :aria-label="t('app.register')">
         <v-icon aria-hidden="true">mdi-account-plus</v-icon>
       </v-btn>
-      <v-btn v-if="!isAuthenticated" to="/login" icon aria-label="Entrar">
+      <v-btn v-if="!isAuthenticated" to="/login" icon :aria-label="t('app.signIn')">
         <v-icon aria-hidden="true">mdi-login</v-icon>
       </v-btn>
-      <v-btn v-if="isAuthenticated" to="/conversations" icon aria-label="Conversas">
+      <v-btn v-if="isAuthenticated" to="/conversations" icon :aria-label="t('app.conversations')">
         <v-icon aria-hidden="true">mdi-message</v-icon>
       </v-btn>
-      <v-btn v-if="isAuthenticated" to="/settings" icon aria-label="Configurações">
+      <v-btn v-if="isAuthenticated" to="/settings" icon :aria-label="t('app.settings')">
         <v-icon aria-hidden="true">mdi-cog</v-icon>
       </v-btn>
-      <v-btn v-if="isAuthenticated" icon aria-label="Sair" @click="logout">
+      <v-btn v-if="isAuthenticated" icon :aria-label="t('app.signOut')" @click="logout">
         <v-icon aria-hidden="true">mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>

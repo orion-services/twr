@@ -15,14 +15,14 @@
               @click="initializeChat"
               class="ml-2"
             >
-              Try Again
+              {{ t('chat.retry') }}
             </v-btn>
           </div>
         </v-alert>
       </div>
       <div v-if="initializing" class="text-center mt-4">
         <v-progress-circular indeterminate color="primary" aria-hidden="true"></v-progress-circular>
-        <div class="mt-2 text-body-2">Initializing conversation...</div>
+        <div class="mt-2 text-body-2">{{ t('chat.initializing') }}</div>
       </div>
       <div v-else ref="messagesContent">
         <div 
@@ -60,7 +60,7 @@
     <div class="input-container">
       <v-text-field
         v-model="prompt"
-        label="Type your message..."
+        :label="t('chat.placeholder')"
         outlined
         dense
         hide-details
@@ -71,7 +71,7 @@
       <v-btn
         color="primary"
         icon
-        aria-label="Enviar mensagem"
+        :aria-label="t('chat.send')"
         @click="sendMessage"
         :disabled="!prompt.trim() || isLoading || initializing || !conversationId"
         :loading="isLoading"
@@ -97,6 +97,7 @@ import { apiService } from '../services/api';
 import { authService } from '../services/auth';
 import { normalizePersistedMessages } from '../services/messageHistory';
 import { exerciseTitle } from '../services/exerciseChoice';
+import { t } from '../services/locale';
 import ExerciseChoiceDialog from './ExerciseChoiceDialog.vue';
 
 // breaks:true: útil para respostas da IA com quebras simples; listas/código continuam com regras GFM
@@ -201,7 +202,7 @@ export default {
         
         if (!this.userId) {
           console.error('User without valid identifier:', user);
-          this.error = 'Error: user without valid identifier. Please log in again.';
+          this.error = t('chat.userMissing');
           this.initializing = false;
           setTimeout(() => {
             this.$router.push('/login');
@@ -231,7 +232,7 @@ export default {
 
       } catch (error) {
         console.error('Error initializing chat:', error);
-        this.error = error.message || 'Error initializing chat. Please reload the page.';
+        this.error = error.message || t('chat.initError');
       } finally {
         this.initializing = false;
         this.$nextTick(() => {
@@ -393,7 +394,7 @@ export default {
         if (this.choicePurpose === 'create') {
           const conversation = await apiService.createConversation(this.userId, exerciseTitle(activity), activity);
           if (!conversation || !conversation.id) {
-            throw new Error('Invalid response when creating conversation: no ID');
+            throw new Error(t('conversations.missingId'));
           }
           this.choiceOpen = false;
           this.tutorActivity = activity;
@@ -408,7 +409,7 @@ export default {
         }
       } catch (error) {
         console.error('Error choosing exercise:', error);
-        this.error = error.message || 'Error creating conversation. Please try again.';
+        this.error = error.message || t('chat.createError');
       } finally {
         this.creatingConversation = false;
       }
@@ -442,9 +443,9 @@ export default {
           (error) => {
             console.error('Stream error:', error);
             if (this.messages[botMessageIndex]) {
-              this.messages[botMessageIndex].content = 'Error processing message. Please try again.';
+              this.messages[botMessageIndex].content = t('chat.processRetry');
             }
-            this.error = error.message || 'Error processing message. Check your connection and try again.';
+            this.error = error.message || t('chat.processError');
             this.isLoading = false;
           },
           () => {
@@ -454,7 +455,7 @@ export default {
         );
       } catch (error) {
         console.error('Error starting exercise:', error);
-        this.error = error.message || 'Error processing message. Check your connection and try again.';
+        this.error = error.message || t('chat.processError');
         this.isLoading = false;
       }
     },
@@ -462,7 +463,7 @@ export default {
     async sendMessage() {
       if (!this.prompt.trim() || this.isLoading || !this.conversationId) {
         if (!this.conversationId) {
-          this.error = 'Conversation not initialized. Please reload the page.';
+          this.error = t('chat.notInitialized');
         }
         return;
       }
@@ -524,9 +525,9 @@ export default {
           (error) => {
             console.error('Stream error:', error);
             if (this.messages[botMessageIndex]) {
-              this.messages[botMessageIndex].content = 'Error processing message. Please try again.';
+              this.messages[botMessageIndex].content = t('chat.processRetry');
             }
-            this.error = error.message || 'Error processing message. Check your connection and try again.';
+            this.error = error.message || t('chat.processError');
             this.isLoading = false;
           },
           () => {
@@ -545,9 +546,9 @@ export default {
       } catch (error) {
         console.error('Error sending message:', error);
         if (this.messages[botMessageIndex]) {
-          this.messages[botMessageIndex].content = 'Error sending message. Please try again.';
+          this.messages[botMessageIndex].content = t('chat.sendRetry');
         }
-        this.error = error.response?.data?.message || error.message || 'Error sending message. Check your connection and try again.';
+        this.error = error.response?.data?.message || error.message || t('chat.sendError');
         this.isLoading = false;
       }
     }

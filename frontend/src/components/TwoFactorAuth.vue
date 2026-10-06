@@ -1,13 +1,13 @@
 <template>
   <v-card class="mt-4">
     <v-card-title class="text-h6">
-      Two-Factor Authentication
+      {{ t('twoFactor.title') }}
     </v-card-title>
     <v-card-text>
-      <p>Please enter the 6-digit code from your authenticator app.</p>
+      <p>{{ t('twoFactor.prompt') }}</p>
       <v-text-field
         v-model="code"
-        label="2FA Code"
+        :label="t('field.code2fa')"
         required
         prepend-inner-icon="mdi-shield-lock"
         maxlength="6"
@@ -26,7 +26,7 @@
         class="mt-4"
         @click="validate"
       >
-        Validate
+        {{ t('twoFactor.validate') }}
       </v-btn>
       <v-btn
         text
@@ -34,7 +34,7 @@
         class="mt-2"
         @click="$emit('cancel')"
       >
-        Cancel
+        {{ t('twoFactor.cancel') }}
       </v-btn>
     </v-card-text>
   </v-card>
@@ -42,6 +42,7 @@
 
 <script>
 import { orionUsersService, extractOrionErrorMessage } from '../services/orionUsers';
+import { t } from '../services/locale';
 
 export default {
   name: 'TwoFactorAuth',
@@ -62,7 +63,7 @@ export default {
   methods: {
     async validate() {
       if (this.code.length !== 6) {
-        this.error = 'The code must have 6 digits';
+        this.error = t('twoFactor.mustSix');
         return;
       }
 
@@ -77,11 +78,11 @@ export default {
           const user = response.authentication.user;
           this.$emit('authenticated', response.authentication.token, user);
         } else {
-          this.error = 'Invalid code. Please try again.';
+          this.error = t('twoFactor.invalid');
         }
       } catch (error) {
         console.error('Erro ao validar 2FA:', error);
-        this.error = extractOrionErrorMessage(error) || 'Invalid code. Please try again.';
+        this.error = extractOrionErrorMessage(error) || t('twoFactor.invalid');
       } finally {
         this.loading = false;
       }
