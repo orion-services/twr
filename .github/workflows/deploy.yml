@@ -1,27 +1,14 @@
 ####
 # Deploys twr to the production EC2 instance (sa-east-1) on every push to `main`.
 #
-# Runs on a self-hosted GitHub Actions runner registered automatically on that
-# instance at boot by infra/terraform/user_data.sh.tftpl (see docs/aws.md,
-# section "CI/CD com GitHub Actions") — no AWS credentials are needed as GitHub
-# secrets, since the job executes locally with the same permissions as a
-# manual deploy.
+# Runs on a GitHub-hosted runner. The job assumes the IAM role created in
+# infra/terraform/github_oidc.tf and sends infra/ssm-deploy.sh to the instance
+# through SSM. That script clones/updates /opt/twr and runs docker compose
+# there (ARM build must happen on the box). No self-hosted runner and no
+# Administration PAT.
 #
-# Requires a `.env` file already present at /opt/twr/.env on the instance
-# (created once, manually, per docs/aws.md step 4) with all required
-# production secrets (POSTGRES_PASSWORD, OPENAI_API_KEY, DOMAIN, VITE_ORION_USERS_URL,
-# QUARKUS_MAILER_USERNAME, QUARKUS_MAILER_PASSWORD, etc. — see .env.example).
-# This path is independent from the runner's own checkout directory, and is never
-# touched by `actions/checkout` (which wipes untracked files on each run).
-#
-# `-p twr` pins the Compose project name so this run reuses the same
-# containers/volumes as the initial manual deploy in /opt/twr, even though
-# the runner checks out the repo into its own separate work directory.
-#
-# The jar is no longer pre-built on the runner: src/main/docker/Dockerfile.jvm is a
-# multi-stage build that compiles the Vue frontend and the Quarkus app from source
-# (see the "frontend" and "jvm-build" stages), so `docker compose ... --build` alone
-# is enough.
+# Requires /opt/twr/.env already on the instance (docs/aws.md step 4).
+# Requires terraform apply of the GitHub OIDC role before the first run.
 ####
 name: Deploy to AWS
 
@@ -34,33 +21,76 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: sa-east-1
+  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::471112830628:role/twr-github-deploy
+
 jobs:
   deploy:
-    runs-on: [self-hosted, twr-prod]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check Docker buildx
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy over SSM
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
         run: |
-          docker buildx version
-          ver=$(docker buildx version | awk '{print $2}' | sed 's/^v//')
-          # compose --build needs >= 0.17.0
-          printf '%s\n' "$ver" | awk -F. '{
-            if ($1 > 0 || ($1 == 0 && $2 >= 17)) exit 0;
-            exit 1
-          }' || {
-            echo "docker buildx $ver is too old (need >= 0.17.0)" >&2
-            exit 1
-          }
+          set -euo pipefail
+          remote=$(mktemp)
+          {
+            echo "bash -eo pipefail <<'SSM_DEPLOY'"
+            echo "export GH_TOKEN=$(printf %q "$GH_TOKEN")"
+            echo "export REPO=$(printf %q "$REPO")"
+            echo "export SHA=$(printf %q "$SHA")"
+            cat infra/ssm-deploy.sh
+            echo "SSM_DEPLOY"
+          } > "$remote"
 
-      - name: Validate Compose configuration
-        run: docker compose -p twr --env-file /opt/twr/.env config --quiet
+          command_id=$(aws ssm send-command \
+            --instance-ids "$(aws ec2 describe-instances \
+              --filters "Name=tag:Name,Values=twr" "Name=instance-state-name,Values=running" \
+              --query 'Reservations[0].Instances[0].InstanceId' --output text)" \
+            --document-name AWS-RunShellScript \
+            --comment "twr deploy ${SHA}" \
+            --timeout-seconds 3600 \
+            --parameters "$(jq -n --arg script "$(cat "$remote")" '{commands:[$script]}')" \
+            --query 'Command.CommandId' --output text)
 
-      - name: Deploy application services
-        run: docker compose -p twr --env-file /opt/twr/.env up -d --build twr orion-users
-
-      # Caddy does not automatically reload a bind-mounted Caddyfile. Recreate
-      # it on every deploy so proxy route changes become effective.
-      - name: Reload reverse proxy
-        run: docker compose -p twr --env-file /opt/twr/.env up -d --force-recreate caddy
+          echo "SSM command $command_id"
+          for _ in $(seq 1 90); do
+            status=$(aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "$(aws ec2 describe-instances \
+                --filters "Name=tag:Name,Values=twr" "Name=instance-state-name,Values=running" \
+                --query 'Reservations[0].Instances[0].InstanceId' --output text)" \
+              --query 'Status' --output text)
+            echo "status=$status"
+            case "$status" in
+              Success) exit 0 ;;
+              Failed|Cancelled|TimedOut)
+                aws ssm get-command-invocation \
+                  --command-id "$command_id" \
+                  --instance-id "$(aws ec2 describe-instances \
+                    --filters "Name=tag:Name,Values=twr" "Name=instance-state-name,Values=running" \
+                    --query 'Reservations[0].Instances[0].InstanceId' --output text)" \
+                  --query '[StandardOutputContent,StandardErrorContent]' --output text
+                exit 1
+                ;;
+            esac
+            sleep 20
+          done
+          echo "timed out waiting for SSM command" >&2
+          exit 1

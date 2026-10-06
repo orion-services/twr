@@ -6,9 +6,9 @@
 # instance_type = "t4g.small"
 # data_volume_size_gb = 10
 
-# Self-hosted GitHub Actions runner (registered automatically at boot).
+# GitHub repo the hosted deploy workflow and optional boot-time runner use.
 # github_repo              = "orion-services/twr"
-# github_runner_labels     = "twr-prod"
+# github_oidc_provider_arn = null
 # github_pat_ssm_parameter = "/twr/github-runner-pat"
 
 # Only set this if you need SSH in addition to (or instead of) SSM Session
