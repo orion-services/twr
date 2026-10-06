@@ -68,24 +68,33 @@ variable "subnet_id" {
 }
 
 variable "github_repo" {
-  description = "GitHub repository (owner/name) the self-hosted Actions runner registers against."
+  description = "GitHub repository (owner/name) the deploy workflow and optional self-hosted runner use."
   type        = string
   default     = "orion-services/twr"
 }
 
 variable "github_runner_labels" {
-  description = "Comma-separated labels for the self-hosted runner. Must match `runs-on` in .github/workflows/deploy.yml."
+  description = "Comma-separated labels used only if the optional self-hosted runner still registers at boot."
   type        = string
   default     = "twr-prod"
 }
 
 variable "github_pat_ssm_parameter" {
   description = <<-EOT
-    Name of the SSM Parameter Store SecureString holding a GitHub fine-grained PAT
-    with "Administration: Read and write" on github_repo. Read by user_data.sh at boot
-    to register the self-hosted runner. Created manually (outside Terraform, so the
-    secret never lands in the state) — see docs/aws.md.
+    Name of the SSM Parameter Store SecureString holding a GitHub PAT. Still read
+    at boot by the optional self-hosted runner registration. Deploy itself uses a
+    GitHub-hosted runner and SSM, so this parameter is no longer required for CI.
   EOT
   type        = string
   default     = "/twr/github-runner-pat"
+}
+
+variable "github_oidc_provider_arn" {
+  description = <<-EOT
+    ARN of an existing GitHub Actions OIDC provider in this account. Leave null
+    to create one. Set this if the account already has
+    token.actions.githubusercontent.com (only one provider per URL is allowed).
+  EOT
+  type        = string
+  default     = null
 }

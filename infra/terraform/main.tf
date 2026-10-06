@@ -166,10 +166,10 @@ resource "aws_instance" "twr" {
     github_runner_labels = var.github_runner_labels
     github_pat_parameter = var.github_pat_ssm_parameter
   })
-  # Re-run user_data if it changes (Terraform otherwise ignores user_data updates
-  # on existing instances). Remove this if you don't want instance replacement on
-  # every script tweak.
-  user_data_replace_on_change = true
+  # Keep false so a user_data tweak does not destroy the instance. Re-run the
+  # rendered script by hand if a boot change is needed:
+  # sudo bash /var/lib/cloud/instance/scripts/part-001
+  user_data_replace_on_change = false
 
   root_block_device {
     volume_size           = var.root_volume_size_gb

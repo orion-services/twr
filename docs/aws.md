@@ -30,31 +30,15 @@ site no ar o tempo todo, até o fim de 2026: disco + IPv4, cerca de US$ 7/mês.
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5
 - Um domínio (ou subdomínio) que você controla, para apontar ao Elastic IP e emitir o certificado HTTPS — **opcional**: se não tiver um, veja "Não quero um domínio próprio" no passo 2
 
-## 0. Guardar o token do GitHub no SSM (passo único)
+## 0. Token do GitHub no SSM (opcional)
 
-A instância registra sozinha o runner do GitHub Actions no primeiro boot
-(veja o passo 8). Para isso ela lê um GitHub PAT do SSM Parameter Store, que
-fica fora do Terraform para o segredo nunca ir parar no state.
+O deploy em CI **não usa mais um runner self-hosted**. O workflow roda no
+GitHub e envia o build para a instância via SSM. Um PAT com permissão
+Administration deixa de ser necessário.
 
-1. No GitHub, crie um **fine-grained personal access token** em
-   **Settings -> Developer settings -> Personal access tokens -> Fine-grained
-   tokens**, com acesso somente ao repositório `orion-services/twr` e a
-   permissão **Administration: Read and write** (é o que permite gerar tokens
-   de registro de runner).
-2. Salve o token no SSM, na mesma região da infraestrutura:
-
-```bash
-aws ssm put-parameter \
-  --region sa-east-1 \
-  --name /twr/github-runner-pat \
-  --type SecureString \
-  --value '<GITHUB_PAT>'
-# para trocar o token depois: acrescente --overwrite
-```
-
-Se o parâmetro não existir no boot, a instância sobe normalmente, sem runner
-(um aviso aparece em `/var/log/twr-user-data.log`). Veja o passo 8.1 para
-registrar o runner depois.
+O parâmetro `/twr/github-runner-pat` só ainda é lido no boot se você quiser
+manter o registro opcional do runner antigo. Se o parâmetro não existir, a
+instância sobe normalmente.
 
 ## 1. Provisionar a infraestrutura com Terraform
 
@@ -207,64 +191,51 @@ Usando o `WHATSAPP_VERIFY_TOKEN` definido no `.env`.
 
 ## 8. CI/CD com GitHub Actions
 
-Todo **push na branch `main` faz rebuild e restart automático do container
-`twr` na EC2**.
+Todo **push na branch `main` faz rebuild e restart automático** do stack na
+EC2. O job roda em um runner hospedado pelo GitHub (`ubuntu-latest`). Ele
+assume o papel IAM `twr-github-deploy` (OIDC, sem access key no GitHub) e
+envia [infra/ssm-deploy.sh](../infra/ssm-deploy.sh) para a instância via SSM.
+O build Docker acontece na máquina (ARM). Não há runner self-hosted.
 
-A abordagem usada é um **self-hosted runner do GitHub Actions rodando na
-própria instância EC2** — o workflow executa localmente na máquina, com as
-mesmas permissões do deploy manual. Não é preciso guardar credenciais AWS
-como secret no GitHub.
-
-### 8.1 Registro automático do runner
-
-O runner é registrado sozinho no primeiro boot da instância pelo
-`infra/terraform/user_data.sh.tftpl`, que:
-
-1. lê o PAT do parâmetro SSM `/twr/github-runner-pat` (passo 0);
-2. troca o PAT por um token de registro de curta duração na API do GitHub;
-3. baixa a versão mais recente do runner Linux ARM64 em `/opt/actions-runner`;
-4. registra o runner em `orion-services/twr` com o label `twr-prod` e o
-   instala como serviço systemd (sobrevive a reboots).
-
-Para conferir: **Settings** do repositório -> **Actions** -> **Runners** deve
-listar o runner `twr-<hostname>` como *Idle*. Na instância, o log fica em
-`/var/log/twr-user-data.log`.
-
-Repositório, labels e nome do parâmetro são configuráveis pelas variáveis
-`github_repo`, `github_runner_labels` e `github_pat_ssm_parameter` do
-Terraform. O label precisa bater com o `runs-on` do workflow (veja 8.2).
-
-Se o parâmetro não existia no boot (ou o PAT estava errado), crie ou corrija o
-parâmetro e reexecute só o registro, dentro da sessão SSM:
+Antes do primeiro deploy por CI, aplique o Terraform para criar o papel e o
+provedor OIDC (não troca a instância):
 
 ```bash
-sudo bash /var/lib/cloud/instance/scripts/part-001
+cd infra/terraform
+terraform apply
+terraform output github_deploy_role_arn
 ```
 
-Esse é o próprio user_data já renderizado. Ele é idempotente: não reformata o
-volume de dados e pula o registro se o runner já estiver configurado.
+O ARN precisa bater com `AWS_DEPLOY_ROLE_ARN` em
+[`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
 
-### 8.2 Workflow
+O workflow reutiliza o `.env` já configurado em `/opt/twr/.env` (passo 4).
+Sem esse arquivo o script na instância para.
 
-Já existe em [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml):
-dispara em todo push na `main` (ou manualmente, em **Actions -> Deploy to AWS
--> Run workflow**), valida a configuração do Compose, reconstrói `twr` e
-`orion-users` e recria o `caddy` para carregar eventuais mudanças no
-`Caddyfile`. O workflow reutiliza o `.env` já configurado manualmente em
-`/opt/twr/.env` (passo 4) — o `.env` nunca entra no repositório nem em secrets
-do GitHub. O caminho fixo é necessário porque o `actions/checkout` limpa
-arquivos não versionados no diretório de trabalho do runner a cada execução
-(o `.env`, sendo `.gitignore`d, seria apagado se estivesse dentro do checkout).
-O `-p twr` garante que o CI atualiza os mesmos containers/volumes do deploy
-manual, mesmo rodando de um diretório diferente (o runner faz checkout em seu
-próprio `_work/`, não em `/opt/twr`).
+Dispare também em **Actions -> Deploy to AWS -> Run workflow**.
 
-### 8.3 Nota de segurança
+### 8.1 Deploy manual (enquanto o CI não rodou)
 
-Um self-hosted runner executa o código de qualquer push na branch que ele
-observa, com as credenciais da própria máquina. Mantenha *branch protection*
-na `main` (exigindo PR revisado antes do merge) para não expor a instância a
-código não confiável de pushes diretos.
+Na sessão SSM, como `ec2-user`, com `/opt/twr/.env` já preenchido, clone o
+repositório e suba o Compose (permissão **Contents: Read** no token, sem
+Administration):
+
+```bash
+cd /opt/twr
+git init
+git remote add origin https://github.com/orion-services/twr.git
+git fetch --depth 1 origin main
+git checkout -f FETCH_HEAD
+docker compose -p twr --env-file /opt/twr/.env up -d --build
+```
+
+Se o repositório for privado, use um PAT só com Contents: Read no remote
+`https://x-access-token:<PAT>@github.com/orion-services/twr.git`.
+
+### 8.2 Nota de segurança
+
+O job hospedado pelo GitHub só pode assumir o papel IAM deste repositório.
+Mantenha *branch protection* na `main`.
 
 ## Operação do dia a dia
 

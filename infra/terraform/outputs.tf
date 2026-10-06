@@ -27,3 +27,8 @@ output "security_group_id" {
   description = "Security group attached to the instance."
   value       = aws_security_group.twr.id
 }
+
+output "github_deploy_role_arn" {
+  description = "IAM role assumed by .github/workflows/deploy.yml via GitHub OIDC."
+  value       = aws_iam_role.github_deploy.arn
+}
