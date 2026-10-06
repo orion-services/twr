@@ -4,7 +4,7 @@
 # Services:
 #   caddy        - reverse proxy, automatic HTTPS (Let's Encrypt) for DOMAIN
 #   twr          - the Quarkus app itself (this repo), built from src/main/docker/Dockerfile.jvm.
-#                  Runs the "prod" Quarkus profile, which uses OpenAI for chat (gpt-6-luna)
+#                  Runs the "prod" Quarkus profile, which uses OpenAI for chat (gpt-6.1-sol)
 #                  and embeddings (text-embedding-3-small) instead of Ollama / the local
 #                  MiniLM model (see application-prod.properties) — no local LLM runtime
 #                  needed on the instance.
@@ -70,7 +70,7 @@ services:
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-twr-webhook-verify}
       WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
-      # Required in prod: used as the chat model (gpt-6-luna) and for WhatsApp audio
+      # Required in prod: used as the chat model (gpt-6.1-sol) and for WhatsApp audio
       # transcription (Whisper).
       OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
     depends_on:
