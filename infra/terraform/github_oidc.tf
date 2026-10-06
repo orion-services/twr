@@ -24,7 +24,6 @@ locals {
     var.github_oidc_provider_arn,
     try(aws_iam_openid_connect_provider.github[0].arn, "")
   )
-  github_repo_sub = "repo:${var.github_repo}:*"
 }
 
 resource "aws_iam_role" "github_deploy" {
@@ -37,13 +36,17 @@ resource "aws_iam_role" "github_deploy" {
       Principal = {
         Federated = local.github_oidc_provider_arn
       }
-      Action = "sts:AssumeRoleWithWebIdentity"
+      # TagSession is required by aws-actions/configure-aws-credentials.
+      # Match `repository` (always present) rather than `sub`, which orgs
+      # often rewrite with a custom OIDC claim template.
+      Action = [
+        "sts:AssumeRoleWithWebIdentity",
+        "sts:TagSession",
+      ]
       Condition = {
         StringEquals = {
-          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-        }
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = local.github_repo_sub
+          "token.actions.githubusercontent.com:aud"        = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:repository" = var.github_repo
         }
       }
     }]
