@@ -8,6 +8,9 @@ test('uses the first supported browser language', () => {
   assert.equal(resolveExerciseLocale(['en-US']), 'en');
   assert.equal(resolveExerciseLocale(['de']), 'en');
   assert.equal(resolveExerciseLocale([]), 'en');
+  assert.equal(resolveExerciseLocale(['pt_BR']), 'pt');
+  assert.equal(resolveExerciseLocale([], 'es-MX'), 'es');
+  assert.equal(resolveExerciseLocale(undefined, 'pt-PT'), 'pt');
 });
 
 test('returns the modal copy and the conversation title in that language', () => {

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { t } from './locale.js';
 
 /**
  * Extracts a human-readable error message from an Orion Users error response.
@@ -23,23 +24,26 @@ export function extractOrionErrorMessage(error) {
 }
 
 /** Shown when password login succeeds but the account email is still unconfirmed. */
-export const EMAIL_NOT_VALIDATED_MESSAGE =
-  'Please validate your email before signing in. Check your inbox for the confirmation link.';
+export function emailNotValidatedMessage(languages) {
+  return t('auth.emailNotValidated', languages);
+}
 
 /** Shown after Orion Users generates a new password and emails it. */
-export const PASSWORD_RECOVERED_MESSAGE =
-  'A new password has been sent to your email. Check your inbox and sign in with it.';
+export function passwordRecoveredMessage(languages) {
+  return t('auth.passwordRecovered', languages);
+}
 
 /**
  * Password login is refused until the account email is confirmed.
  * Google sign-in is left alone: the provider has already verified the address.
  *
  * @param {object | null | undefined} user user payload from Orion Users
+ * @param {string[] | string | undefined} languages browser languages, when the caller wants a specific copy
  * @returns {string | null} the message to show, or null when login may proceed
  */
-export function unvalidatedEmailMessage(user) {
+export function unvalidatedEmailMessage(user, languages) {
   if (user && user.emailValid === false) {
-    return EMAIL_NOT_VALIDATED_MESSAGE;
+    return emailNotValidatedMessage(languages);
   }
   return null;
 }

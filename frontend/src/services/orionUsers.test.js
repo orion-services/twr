@@ -3,16 +3,19 @@ import assert from 'node:assert/strict';
 
 import {
   unvalidatedEmailMessage,
-  EMAIL_NOT_VALIDATED_MESSAGE,
+  emailNotValidatedMessage,
   extractOrionErrorMessage,
-  PASSWORD_RECOVERED_MESSAGE
+  passwordRecoveredMessage
 } from './orionUsers.js';
 
 test('asks the user to validate the email when the account is still unconfirmed', () => {
   assert.equal(
-    unvalidatedEmailMessage({ email: 'ana@example.com', emailValid: false }),
-    EMAIL_NOT_VALIDATED_MESSAGE
+    unvalidatedEmailMessage({ email: 'ana@example.com', emailValid: false }, ['en']),
+    emailNotValidatedMessage(['en'])
   );
+  assert.match(emailNotValidatedMessage(['en']), /validate your email/i);
+  assert.match(emailNotValidatedMessage(['pt-BR']), /e-mail/i);
+  assert.match(emailNotValidatedMessage(['es-ES']), /correo electrónico/i);
 });
 
 test('allows login when the email is already validated', () => {
@@ -40,5 +43,7 @@ test('surfaces Orion validation messages when recovering a password fails', () =
 });
 
 test('keeps a stable success copy after a new password is emailed', () => {
-  assert.match(PASSWORD_RECOVERED_MESSAGE, /new password/i);
+  assert.match(passwordRecoveredMessage(['en']), /new password/i);
+  assert.match(passwordRecoveredMessage(['pt']), /senha/i);
+  assert.match(passwordRecoveredMessage(['es']), /contraseña/i);
 });

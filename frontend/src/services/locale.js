@@ -1,0 +1,557 @@
+const SUPPORTED = new Set(['pt', 'en', 'es']);
+
+const messages = {
+  en: {
+    'exercise.question': 'What type of exercise do you want to do?',
+    'exercise.connectives': 'Connectives',
+    'exercise.expansion': 'Expansion',
+    'exercise.close': 'Close',
+
+    'app.lightTheme': 'Use light theme',
+    'app.darkTheme': 'Use dark theme',
+    'app.register': 'Register',
+    'app.signIn': 'Sign in',
+    'app.conversations': 'Conversations',
+    'app.settings': 'Settings',
+    'app.signOut': 'Sign out',
+
+    'field.email': 'Email',
+    'field.password': 'Password',
+    'field.name': 'Name',
+    'field.confirmPassword': 'Confirm Password',
+    'field.code2fa': '2FA Code',
+    'field.code6': '6-digit code',
+
+    'validation.emailRequired': 'Email is required',
+    'validation.emailInvalid': 'Email must be valid',
+    'validation.passwordRequired': 'Password is required',
+    'validation.passwordMin': 'Password must be at least 8 characters',
+    'validation.passwordUpper': 'Password must contain at least one uppercase letter',
+    'validation.passwordNumber': 'Password must contain at least one number',
+    'validation.passwordSpecial': 'Password must contain at least one special character',
+    'validation.passwordLower': 'Password must contain at least one lowercase letter',
+    'validation.nameRequired': 'Name is required',
+    'validation.nameMin': 'Name must be at least 3 characters',
+    'validation.confirmRequired': 'Password confirmation is required',
+    'validation.passwordMismatch': 'Passwords do not match',
+    'validation.codeRequired': 'Code is required',
+    'validation.codeSixDigits': 'Code must have 6 digits',
+
+    'password.show': 'Show password',
+    'password.hide': 'Hide password',
+    'password.hintLogin': 'Password must be at least 8 characters, including an uppercase letter, a number and a special character',
+    'password.hintRegister': 'Password must be at least 8 characters, including an uppercase letter, a lowercase letter and a special character',
+
+    'login.title': 'Login',
+    'login.forgot': 'Forgot your password?',
+    'login.submit': 'Sign In',
+    'login.or': 'OR',
+    'login.google': 'Sign in with Google',
+    'login.googleStatus': 'Initializing Google Sign In... {status}',
+    'login.googleScriptLoaded': 'Script loaded',
+    'login.googleWaitingScript': 'Waiting for script...',
+    'login.noAccount': "Don't have an account? Sign up",
+    'login.signInError': 'Error signing in. Please try again.',
+    'login.signInCredentials': 'Error signing in. Please check your credentials.',
+    'login.googleLoadError': 'Error loading Google Identity Services. Check your connection.',
+    'login.googleInitReload': 'Error initializing Google authentication. Please reload the page.',
+    'login.googleClientMissing': 'Google Client ID not configured. Check the .env file and restart the server.',
+    'login.googleWaiting': 'Waiting for Google Identity Services to load...',
+    'login.googleNotLoaded': 'Google Identity Services not loaded. Wait a few seconds and try again.',
+    'login.googleInitRetry': 'Error initializing Google authentication. Please try again.',
+    'login.googleAuthError': 'Google authentication error: {error}',
+    'login.googleSignInError': 'Error signing in with Google. Please try again.',
+
+    'register.title': 'Create Account',
+    'register.submit': 'Register',
+    'register.google': 'Register with Google',
+    'register.haveAccount': 'Already have an account? Sign in',
+    'register.twoFactor': 'Two-factor authentication required. Please sign in.',
+    'register.createError': 'Error creating account. Please try again.',
+    'register.googleError': 'Error registering/signing in with Google. Please try again.',
+
+    'recover.title': 'Recover Password',
+    'recover.intro': "Enter your email and we'll send you a new password.",
+    'recover.send': 'Send New Password',
+    'recover.back': 'Back to Sign in',
+    'recover.error': 'Unable to recover the password. Please try again.',
+
+    'auth.emailNotValidated': 'Please validate your email before signing in. Check your inbox for the confirmation link.',
+    'auth.passwordRecovered': 'A new password has been sent to your email. Check your inbox and sign in with it.',
+
+    'twoFactor.title': 'Two-Factor Authentication',
+    'twoFactor.prompt': 'Please enter the 6-digit code from your authenticator app.',
+    'twoFactor.validate': 'Validate',
+    'twoFactor.cancel': 'Cancel',
+    'twoFactor.mustSix': 'The code must have 6 digits',
+    'twoFactor.invalid': 'Invalid code. Please try again.',
+
+    'twoFactorSetup.title': 'Two-Factor Authentication Setup',
+    'twoFactorSetup.intro': 'To enable two-factor authentication, you need to:',
+    'twoFactorSetup.step1': 'Provide your email and password to generate the QR code',
+    'twoFactorSetup.step2': 'Scan the QR code with an authenticator app (Google Authenticator, Authy, etc.)',
+    'twoFactorSetup.step3': 'Enter the code generated by the app to validate',
+    'twoFactorSetup.generate': 'Generate QR Code',
+    'twoFactorSetup.scan': 'Scan this QR code with your authenticator app:',
+    'twoFactorSetup.qrAlt': 'QR Code 2FA',
+    'twoFactorSetup.validateEnable': 'Validate and Enable 2FA',
+    'twoFactorSetup.enabled': '2FA is enabled for your account.',
+    'twoFactorSetup.requireBasic': 'Require 2FA for email/password login',
+    'twoFactorSetup.requireSocial': 'Require 2FA for social login',
+    'twoFactorSetup.save': 'Save Settings',
+    'twoFactorSetup.qrSuccess': 'QR code generated successfully. Scan with your authenticator app.',
+    'twoFactorSetup.qrError': 'Error generating QR code. Check your credentials.',
+    'twoFactorSetup.enabledSuccess': '2FA enabled successfully!',
+    'twoFactorSetup.saved': 'Settings saved successfully!',
+    'twoFactorSetup.saveError': 'Error saving settings.',
+
+    'settings.title': 'Settings',
+    'settings.twoFactor': 'Two-Factor Authentication',
+    'settings.twoFactorSubtitle': 'Configure additional security for your account',
+
+    'conversations.title': 'My Conversations',
+    'conversations.new': 'New Conversation',
+    'conversations.search': 'Search conversations',
+    'conversations.empty': "You don't have any conversations yet. Create a new conversation to get started!",
+    'conversations.loading': 'Loading conversations',
+    'conversations.close': 'Close',
+    'conversations.createError': 'Error creating conversation. Please try again.',
+    'conversations.emptyResponse': 'Empty response from server',
+    'conversations.missingId': 'Invalid server response: conversation created without ID',
+    'conversations.createdAt': 'Created at: {date}',
+    'conversations.lastActivity': '| Last activity: {date}',
+    'conversations.titleLabel': 'Conversation title',
+    'conversations.saveTitle': 'Save title',
+    'conversations.rename': 'Rename conversation',
+    'conversations.delete': 'Delete conversation',
+    'conversations.renameError': 'Could not rename conversation',
+    'conversations.confirmDelete': 'Are you sure you want to delete this conversation?',
+
+    'chat.retry': 'Try Again',
+    'chat.initializing': 'Initializing conversation...',
+    'chat.placeholder': 'Type your message...',
+    'chat.send': 'Send message',
+    'chat.userMissing': 'Error: user without valid identifier. Please log in again.',
+    'chat.initError': 'Error initializing chat. Please reload the page.',
+    'chat.createError': 'Error creating conversation. Please try again.',
+    'chat.processRetry': 'Error processing message. Please try again.',
+    'chat.processError': 'Error processing message. Check your connection and try again.',
+    'chat.notInitialized': 'Conversation not initialized. Please reload the page.',
+    'chat.sendRetry': 'Error sending message. Please try again.',
+    'chat.sendError': 'Error sending message. Check your connection and try again.',
+
+    'api.createError': 'Error creating conversation',
+    'api.tokenMissing': 'Authentication token not found',
+    'api.connectionError': 'Connection error: {error}',
+    'api.httpError': 'HTTP error {status}',
+    'api.emptyBody': 'Response without a body'
+  },
+  pt: {
+    'exercise.question': 'Que tipo de exercício você deseja fazer?',
+    'exercise.connectives': 'Conectivos',
+    'exercise.expansion': 'Expansão',
+    'exercise.close': 'Fechar',
+
+    'app.lightTheme': 'Usar tema claro',
+    'app.darkTheme': 'Usar tema escuro',
+    'app.register': 'Registrar',
+    'app.signIn': 'Entrar',
+    'app.conversations': 'Conversas',
+    'app.settings': 'Configurações',
+    'app.signOut': 'Sair',
+
+    'field.email': 'E-mail',
+    'field.password': 'Senha',
+    'field.name': 'Nome',
+    'field.confirmPassword': 'Confirmar senha',
+    'field.code2fa': 'Código 2FA',
+    'field.code6': 'Código de 6 dígitos',
+
+    'validation.emailRequired': 'O e-mail é obrigatório',
+    'validation.emailInvalid': 'O e-mail deve ser válido',
+    'validation.passwordRequired': 'A senha é obrigatória',
+    'validation.passwordMin': 'A senha deve ter pelo menos 8 caracteres',
+    'validation.passwordUpper': 'A senha deve conter pelo menos uma letra maiúscula',
+    'validation.passwordNumber': 'A senha deve conter pelo menos um número',
+    'validation.passwordSpecial': 'A senha deve conter pelo menos um caractere especial',
+    'validation.passwordLower': 'A senha deve conter pelo menos uma letra minúscula',
+    'validation.nameRequired': 'O nome é obrigatório',
+    'validation.nameMin': 'O nome deve ter pelo menos 3 caracteres',
+    'validation.confirmRequired': 'A confirmação da senha é obrigatória',
+    'validation.passwordMismatch': 'As senhas não coincidem',
+    'validation.codeRequired': 'O código é obrigatório',
+    'validation.codeSixDigits': 'O código deve ter 6 dígitos',
+
+    'password.show': 'Mostrar senha',
+    'password.hide': 'Ocultar senha',
+    'password.hintLogin': 'A senha deve ter pelo menos 8 caracteres, incluindo uma letra maiúscula, um número e um caractere especial',
+    'password.hintRegister': 'A senha deve ter pelo menos 8 caracteres, incluindo uma letra maiúscula, uma letra minúscula e um caractere especial',
+
+    'login.title': 'Entrar',
+    'login.forgot': 'Esqueceu sua senha?',
+    'login.submit': 'Entrar',
+    'login.or': 'OU',
+    'login.google': 'Entrar com o Google',
+    'login.googleStatus': 'Inicializando o login do Google... {status}',
+    'login.googleScriptLoaded': 'Script carregado',
+    'login.googleWaitingScript': 'Aguardando o script...',
+    'login.noAccount': 'Não tem uma conta? Cadastre-se',
+    'login.signInError': 'Erro ao entrar. Tente novamente.',
+    'login.signInCredentials': 'Erro ao entrar. Verifique suas credenciais.',
+    'login.googleLoadError': 'Erro ao carregar o Google Identity Services. Verifique sua conexão.',
+    'login.googleInitReload': 'Erro ao inicializar a autenticação do Google. Recarregue a página.',
+    'login.googleClientMissing': 'O Client ID do Google não está configurado. Verifique o arquivo .env e reinicie o servidor.',
+    'login.googleWaiting': 'Aguardando o carregamento do Google Identity Services...',
+    'login.googleNotLoaded': 'O Google Identity Services não carregou. Espere alguns segundos e tente novamente.',
+    'login.googleInitRetry': 'Erro ao inicializar a autenticação do Google. Tente novamente.',
+    'login.googleAuthError': 'Erro de autenticação do Google: {error}',
+    'login.googleSignInError': 'Erro ao entrar com o Google. Tente novamente.',
+
+    'register.title': 'Criar conta',
+    'register.submit': 'Cadastrar',
+    'register.google': 'Cadastrar com o Google',
+    'register.haveAccount': 'Já tem uma conta? Entre',
+    'register.twoFactor': 'A autenticação de dois fatores é necessária. Entre na sua conta.',
+    'register.createError': 'Erro ao criar a conta. Tente novamente.',
+    'register.googleError': 'Erro ao cadastrar ou entrar com o Google. Tente novamente.',
+
+    'recover.title': 'Recuperar senha',
+    'recover.intro': 'Informe seu e-mail e enviaremos uma senha nova.',
+    'recover.send': 'Enviar senha nova',
+    'recover.back': 'Voltar para entrar',
+    'recover.error': 'Não foi possível recuperar a senha. Tente novamente.',
+
+    'auth.emailNotValidated': 'Valide seu e-mail antes de entrar. Verifique sua caixa de entrada para o link de confirmação.',
+    'auth.passwordRecovered': 'Uma senha nova foi enviada para o seu e-mail. Verifique a caixa de entrada e entre com ela.',
+
+    'twoFactor.title': 'Autenticação de dois fatores',
+    'twoFactor.prompt': 'Informe o código de 6 dígitos do seu aplicativo autenticador.',
+    'twoFactor.validate': 'Validar',
+    'twoFactor.cancel': 'Cancelar',
+    'twoFactor.mustSix': 'O código deve ter 6 dígitos',
+    'twoFactor.invalid': 'Código inválido. Tente novamente.',
+
+    'twoFactorSetup.title': 'Configuração da autenticação de dois fatores',
+    'twoFactorSetup.intro': 'Para ativar a autenticação de dois fatores, você precisa:',
+    'twoFactorSetup.step1': 'Informar seu e-mail e senha para gerar o código QR',
+    'twoFactorSetup.step2': 'Escanear o código QR com um aplicativo autenticador (Google Authenticator, Authy etc.)',
+    'twoFactorSetup.step3': 'Informar o código gerado pelo aplicativo para validar',
+    'twoFactorSetup.generate': 'Gerar código QR',
+    'twoFactorSetup.scan': 'Escaneie este código QR com seu aplicativo autenticador:',
+    'twoFactorSetup.qrAlt': 'Código QR do 2FA',
+    'twoFactorSetup.validateEnable': 'Validar e ativar o 2FA',
+    'twoFactorSetup.enabled': 'O 2FA está ativado na sua conta.',
+    'twoFactorSetup.requireBasic': 'Exigir 2FA no login com e-mail e senha',
+    'twoFactorSetup.requireSocial': 'Exigir 2FA no login social',
+    'twoFactorSetup.save': 'Salvar configurações',
+    'twoFactorSetup.qrSuccess': 'Código QR gerado. Escaneie com seu aplicativo autenticador.',
+    'twoFactorSetup.qrError': 'Erro ao gerar o código QR. Verifique suas credenciais.',
+    'twoFactorSetup.enabledSuccess': '2FA ativado com sucesso!',
+    'twoFactorSetup.saved': 'Configurações salvas com sucesso!',
+    'twoFactorSetup.saveError': 'Erro ao salvar as configurações.',
+
+    'settings.title': 'Configurações',
+    'settings.twoFactor': 'Autenticação de dois fatores',
+    'settings.twoFactorSubtitle': 'Configure uma segurança adicional para a sua conta',
+
+    'conversations.title': 'Minhas conversas',
+    'conversations.new': 'Nova conversa',
+    'conversations.search': 'Buscar conversas',
+    'conversations.empty': 'Você ainda não tem conversas. Crie uma nova conversa para começar!',
+    'conversations.loading': 'Carregando conversas',
+    'conversations.close': 'Fechar',
+    'conversations.createError': 'Erro ao criar a conversa. Tente novamente.',
+    'conversations.emptyResponse': 'Resposta vazia do servidor',
+    'conversations.missingId': 'Resposta inválida do servidor: conversa criada sem identificador',
+    'conversations.createdAt': 'Criada em: {date}',
+    'conversations.lastActivity': '| Última atividade: {date}',
+    'conversations.titleLabel': 'Título da conversa',
+    'conversations.saveTitle': 'Salvar título',
+    'conversations.rename': 'Renomear conversa',
+    'conversations.delete': 'Excluir conversa',
+    'conversations.renameError': 'Não foi possível renomear a conversa',
+    'conversations.confirmDelete': 'Tem certeza de que deseja excluir esta conversa?',
+
+    'chat.retry': 'Tentar novamente',
+    'chat.initializing': 'Iniciando a conversa...',
+    'chat.placeholder': 'Digite sua mensagem...',
+    'chat.send': 'Enviar mensagem',
+    'chat.userMissing': 'Erro: usuário sem identificador válido. Entre novamente.',
+    'chat.initError': 'Erro ao iniciar o chat. Recarregue a página.',
+    'chat.createError': 'Erro ao criar a conversa. Tente novamente.',
+    'chat.processRetry': 'Erro ao processar a mensagem. Tente novamente.',
+    'chat.processError': 'Erro ao processar a mensagem. Verifique sua conexão e tente novamente.',
+    'chat.notInitialized': 'A conversa não foi iniciada. Recarregue a página.',
+    'chat.sendRetry': 'Erro ao enviar a mensagem. Tente novamente.',
+    'chat.sendError': 'Erro ao enviar a mensagem. Verifique sua conexão e tente novamente.',
+
+    'api.createError': 'Erro ao criar conversa',
+    'api.tokenMissing': 'Token de autenticação não encontrado',
+    'api.connectionError': 'Erro de conexão: {error}',
+    'api.httpError': 'Erro HTTP {status}',
+    'api.emptyBody': 'Resposta sem corpo'
+  },
+  es: {
+    'exercise.question': '¿Qué tipo de ejercicio deseas hacer?',
+    'exercise.connectives': 'Conectivos',
+    'exercise.expansion': 'Expansión',
+    'exercise.close': 'Cerrar',
+
+    'app.lightTheme': 'Usar tema claro',
+    'app.darkTheme': 'Usar tema oscuro',
+    'app.register': 'Registrarse',
+    'app.signIn': 'Entrar',
+    'app.conversations': 'Conversaciones',
+    'app.settings': 'Configuración',
+    'app.signOut': 'Salir',
+
+    'field.email': 'Correo electrónico',
+    'field.password': 'Contraseña',
+    'field.name': 'Nombre',
+    'field.confirmPassword': 'Confirmar contraseña',
+    'field.code2fa': 'Código 2FA',
+    'field.code6': 'Código de 6 dígitos',
+
+    'validation.emailRequired': 'El correo electrónico es obligatorio',
+    'validation.emailInvalid': 'El correo electrónico debe ser válido',
+    'validation.passwordRequired': 'La contraseña es obligatoria',
+    'validation.passwordMin': 'La contraseña debe tener al menos 8 caracteres',
+    'validation.passwordUpper': 'La contraseña debe contener al menos una letra mayúscula',
+    'validation.passwordNumber': 'La contraseña debe contener al menos un número',
+    'validation.passwordSpecial': 'La contraseña debe contener al menos un carácter especial',
+    'validation.passwordLower': 'La contraseña debe contener al menos una letra minúscula',
+    'validation.nameRequired': 'El nombre es obligatorio',
+    'validation.nameMin': 'El nombre debe tener al menos 3 caracteres',
+    'validation.confirmRequired': 'La confirmación de la contraseña es obligatoria',
+    'validation.passwordMismatch': 'Las contraseñas no coinciden',
+    'validation.codeRequired': 'El código es obligatorio',
+    'validation.codeSixDigits': 'El código debe tener 6 dígitos',
+
+    'password.show': 'Mostrar contraseña',
+    'password.hide': 'Ocultar contraseña',
+    'password.hintLogin': 'La contraseña debe tener al menos 8 caracteres, incluida una letra mayúscula, un número y un carácter especial',
+    'password.hintRegister': 'La contraseña debe tener al menos 8 caracteres, incluida una letra mayúscula, una letra minúscula y un carácter especial',
+
+    'login.title': 'Iniciar sesión',
+    'login.forgot': '¿Olvidaste tu contraseña?',
+    'login.submit': 'Entrar',
+    'login.or': 'O',
+    'login.google': 'Iniciar sesión con Google',
+    'login.googleStatus': 'Iniciando el inicio de sesión de Google... {status}',
+    'login.googleScriptLoaded': 'Script cargado',
+    'login.googleWaitingScript': 'Esperando el script...',
+    'login.noAccount': '¿No tienes una cuenta? Regístrate',
+    'login.signInError': 'Error al iniciar sesión. Inténtalo de nuevo.',
+    'login.signInCredentials': 'Error al iniciar sesión. Revisa tus credenciales.',
+    'login.googleLoadError': 'Error al cargar Google Identity Services. Revisa tu conexión.',
+    'login.googleInitReload': 'Error al inicializar la autenticación de Google. Recarga la página.',
+    'login.googleClientMissing': 'El Client ID de Google no está configurado. Revisa el archivo .env y reinicia el servidor.',
+    'login.googleWaiting': 'Esperando a que se cargue Google Identity Services...',
+    'login.googleNotLoaded': 'Google Identity Services no se cargó. Espera unos segundos e inténtalo de nuevo.',
+    'login.googleInitRetry': 'Error al inicializar la autenticación de Google. Inténtalo de nuevo.',
+    'login.googleAuthError': 'Error de autenticación de Google: {error}',
+    'login.googleSignInError': 'Error al iniciar sesión con Google. Inténtalo de nuevo.',
+
+    'register.title': 'Crear cuenta',
+    'register.submit': 'Registrarse',
+    'register.google': 'Registrarse con Google',
+    'register.haveAccount': '¿Ya tienes una cuenta? Inicia sesión',
+    'register.twoFactor': 'Se requiere autenticación de dos factores. Inicia sesión.',
+    'register.createError': 'Error al crear la cuenta. Inténtalo de nuevo.',
+    'register.googleError': 'Error al registrarse o iniciar sesión con Google. Inténtalo de nuevo.',
+
+    'recover.title': 'Recuperar contraseña',
+    'recover.intro': 'Escribe tu correo electrónico y te enviaremos una contraseña nueva.',
+    'recover.send': 'Enviar contraseña nueva',
+    'recover.back': 'Volver a iniciar sesión',
+    'recover.error': 'No se pudo recuperar la contraseña. Inténtalo de nuevo.',
+
+    'auth.emailNotValidated': 'Valida tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada para ver el enlace de confirmación.',
+    'auth.passwordRecovered': 'Se envió una contraseña nueva a tu correo electrónico. Revisa tu bandeja de entrada e inicia sesión con ella.',
+
+    'twoFactor.title': 'Autenticación de dos factores',
+    'twoFactor.prompt': 'Introduce el código de 6 dígitos de tu aplicación de autenticación.',
+    'twoFactor.validate': 'Validar',
+    'twoFactor.cancel': 'Cancelar',
+    'twoFactor.mustSix': 'El código debe tener 6 dígitos',
+    'twoFactor.invalid': 'Código no válido. Inténtalo de nuevo.',
+
+    'twoFactorSetup.title': 'Configuración de la autenticación de dos factores',
+    'twoFactorSetup.intro': 'Para activar la autenticación de dos factores, necesitas:',
+    'twoFactorSetup.step1': 'Indicar tu correo electrónico y contraseña para generar el código QR',
+    'twoFactorSetup.step2': 'Escanear el código QR con una aplicación de autenticación (Google Authenticator, Authy, etc.)',
+    'twoFactorSetup.step3': 'Introducir el código generado por la aplicación para validarlo',
+    'twoFactorSetup.generate': 'Generar código QR',
+    'twoFactorSetup.scan': 'Escanea este código QR con tu aplicación de autenticación:',
+    'twoFactorSetup.qrAlt': 'Código QR de 2FA',
+    'twoFactorSetup.validateEnable': 'Validar y activar 2FA',
+    'twoFactorSetup.enabled': 'La autenticación de dos factores está activada en tu cuenta.',
+    'twoFactorSetup.requireBasic': 'Exigir 2FA para el inicio de sesión con correo y contraseña',
+    'twoFactorSetup.requireSocial': 'Exigir 2FA para el inicio de sesión social',
+    'twoFactorSetup.save': 'Guardar configuración',
+    'twoFactorSetup.qrSuccess': 'Código QR generado. Escanéalo con tu aplicación de autenticación.',
+    'twoFactorSetup.qrError': 'Error al generar el código QR. Revisa tus credenciales.',
+    'twoFactorSetup.enabledSuccess': '¡2FA activada correctamente!',
+    'twoFactorSetup.saved': '¡Configuración guardada correctamente!',
+    'twoFactorSetup.saveError': 'Error al guardar la configuración.',
+
+    'settings.title': 'Configuración',
+    'settings.twoFactor': 'Autenticación de dos factores',
+    'settings.twoFactorSubtitle': 'Configura seguridad adicional para tu cuenta',
+
+    'conversations.title': 'Mis conversaciones',
+    'conversations.new': 'Nueva conversación',
+    'conversations.search': 'Buscar conversaciones',
+    'conversations.empty': 'Todavía no tienes conversaciones. ¡Crea una nueva para empezar!',
+    'conversations.loading': 'Cargando conversaciones',
+    'conversations.close': 'Cerrar',
+    'conversations.createError': 'Error al crear la conversación. Inténtalo de nuevo.',
+    'conversations.emptyResponse': 'Respuesta vacía del servidor',
+    'conversations.missingId': 'Respuesta del servidor no válida: la conversación se creó sin identificador',
+    'conversations.createdAt': 'Creada el: {date}',
+    'conversations.lastActivity': '| Última actividad: {date}',
+    'conversations.titleLabel': 'Título de la conversación',
+    'conversations.saveTitle': 'Guardar título',
+    'conversations.rename': 'Renombrar conversación',
+    'conversations.delete': 'Eliminar conversación',
+    'conversations.renameError': 'No se pudo renombrar la conversación',
+    'conversations.confirmDelete': '¿Seguro que quieres eliminar esta conversación?',
+
+    'chat.retry': 'Intentar de nuevo',
+    'chat.initializing': 'Iniciando la conversación...',
+    'chat.placeholder': 'Escribe tu mensaje...',
+    'chat.send': 'Enviar mensaje',
+    'chat.userMissing': 'Error: usuario sin identificador válido. Inicia sesión de nuevo.',
+    'chat.initError': 'Error al iniciar el chat. Recarga la página.',
+    'chat.createError': 'Error al crear la conversación. Inténtalo de nuevo.',
+    'chat.processRetry': 'Error al procesar el mensaje. Inténtalo de nuevo.',
+    'chat.processError': 'Error al procesar el mensaje. Revisa tu conexión e inténtalo de nuevo.',
+    'chat.notInitialized': 'La conversación no se inició. Recarga la página.',
+    'chat.sendRetry': 'Error al enviar el mensaje. Inténtalo de nuevo.',
+    'chat.sendError': 'Error al enviar el mensaje. Revisa tu conexión e inténtalo de nuevo.',
+
+    'api.createError': 'Error al crear la conversación',
+    'api.tokenMissing': 'No se encontró el token de autenticación',
+    'api.connectionError': 'Error de conexión: {error}',
+    'api.httpError': 'Error HTTP {status}',
+    'api.emptyBody': 'Respuesta sin cuerpo'
+  }
+};
+
+function toList(languages) {
+  if (languages == null) {
+    return [];
+  }
+  if (typeof languages === 'string') {
+    return [languages];
+  }
+  if (typeof languages.length === 'number') {
+    return Array.from(languages).filter(Boolean);
+  }
+  return [];
+}
+
+function languageBase(tag) {
+  return String(tag || '').toLowerCase().split(/[-_]/)[0];
+}
+
+function normalizeTag(tag) {
+  const parts = String(tag || '').trim().replace(/_/g, '-').split('-').filter(Boolean);
+  if (!parts.length) {
+    return '';
+  }
+  const [language, ...rest] = parts;
+  return [
+    language.toLowerCase(),
+    ...rest.map((part) => (part.length === 2 ? part.toUpperCase() : part))
+  ].join('-');
+}
+
+/**
+ * Picks the first supported language. An empty list uses `fallback`
+ * (typically `navigator.language`). Anything else falls back to English.
+ *
+ * @param {string[] | string | ArrayLike<string> | undefined} languages
+ * @param {string | undefined} fallback
+ * @returns {{ locale: 'pt' | 'en' | 'es', tag: string }}
+ */
+export function resolveLocale(languages, fallback) {
+  const list = toList(languages);
+  const candidates = list.length ? list : toList(fallback);
+  for (const lang of candidates) {
+    const base = languageBase(lang);
+    if (SUPPORTED.has(base)) {
+      return { locale: base, tag: normalizeTag(lang) || base };
+    }
+  }
+  return { locale: 'en', tag: 'en' };
+}
+
+function detectLocale() {
+  if (typeof navigator === 'undefined') {
+    return resolveLocale();
+  }
+  return resolveLocale(navigator.languages, navigator.language);
+}
+
+/** Locale chosen once from the browser when this module loads. */
+export const locale = detectLocale();
+
+function interpolate(text, params) {
+  if (!params) {
+    return text;
+  }
+  return text.replace(/\{(\w+)\}/g, (match, name) => (
+    params[name] != null ? String(params[name]) : match
+  ));
+}
+
+/**
+ * @param {string} key
+ * @param {string[] | string | { languages?: string[] | string, [key: string]: unknown } | undefined} languagesOrParams
+ */
+export function t(key, languagesOrParams) {
+  let languages;
+  let params;
+  if (Array.isArray(languagesOrParams) || typeof languagesOrParams === 'string') {
+    languages = languagesOrParams;
+  } else if (languagesOrParams && typeof languagesOrParams === 'object') {
+    languages = languagesOrParams.languages;
+    params = languagesOrParams;
+  }
+  const code = languages === undefined ? locale.locale : resolveLocale(languages).locale;
+  const text = messages[code]?.[key] ?? messages.en[key] ?? key;
+  return interpolate(text, params);
+}
+
+const dateTimeOptions = {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+};
+
+/**
+ * @param {string | number | Date | null | undefined} value
+ * @param {string[] | string | undefined} languages
+ */
+export function formatDateTime(value, languages) {
+  if (!value) {
+    return '';
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const tag = languages === undefined ? locale.tag : resolveLocale(languages).tag;
+  return date.toLocaleString(tag, dateTimeOptions);
+}
+
+export function catalogKeys(code = 'en') {
+  return Object.keys(messages[code] || {});
+}
+
+export function catalogLocales() {
+  return Object.keys(messages);
+}

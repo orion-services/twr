@@ -4,17 +4,17 @@
       <v-col cols="12" sm="8" md="6" lg="4">
         <v-card>
           <v-card-title class="text-h5 text-center pa-4">
-            Recover Password
+            {{ t('recover.title') }}
           </v-card-title>
           <v-card-text>
             <p class="text-medium-emphasis mb-4">
-              Enter your email and we'll send you a new password.
+              {{ t('recover.intro') }}
             </p>
             <v-form ref="form" v-model="valid" lazy-validation @submit.prevent="recover">
               <v-text-field
                 v-model="email"
                 :rules="emailRules"
-                label="Email"
+                :label="t('field.email')"
                 required
                 prepend-inner-icon="mdi-email"
                 type="email"
@@ -38,14 +38,14 @@
                 block
                 class="mt-4"
               >
-                Send New Password
+                {{ t('recover.send') }}
               </v-btn>
             </v-form>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn text to="/login">
-              Back to Sign in
+              {{ t('recover.back') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -55,7 +55,8 @@
 </template>
 
 <script>
-import { orionUsersService, extractOrionErrorMessage, PASSWORD_RECOVERED_MESSAGE } from '../services/orionUsers';
+import { orionUsersService, extractOrionErrorMessage, passwordRecoveredMessage } from '../services/orionUsers';
+import { t } from '../services/locale';
 
 export default {
   name: 'RecoverPassword',
@@ -67,8 +68,8 @@ export default {
       error: null,
       success: null,
       emailRules: [
-        v => !!v || 'Email is required',
-        v => /.+@.+\..+/.test(v) || 'Email must be valid'
+        v => !!v || t('validation.emailRequired'),
+        v => /.+@.+\..+/.test(v) || t('validation.emailInvalid')
       ]
     };
   },
@@ -87,10 +88,10 @@ export default {
 
       try {
         await orionUsersService.recoverPassword(this.email);
-        this.success = PASSWORD_RECOVERED_MESSAGE;
+        this.success = passwordRecoveredMessage();
       } catch (error) {
         console.error('Error recovering password:', error);
-        this.error = extractOrionErrorMessage(error) || 'Unable to recover the password. Please try again.';
+        this.error = extractOrionErrorMessage(error) || t('recover.error');
       } finally {
         this.loading = false;
       }
