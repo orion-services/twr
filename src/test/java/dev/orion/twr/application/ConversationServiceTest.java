@@ -96,10 +96,10 @@ class ConversationServiceTest {
     }
 
     /**
-     * The first exercise is requested internally and is not stored as a student message.
+     * The opening greeting is requested internally and is not stored as a student message.
      */
     @Test
-    void startExercise_asksForTheFirstExercise_withoutAStudentMessage() {
+    void startExercise_asksForTheOpeningGreeting_withoutAStudentMessage() {
         Chat created = service.createConversation(user(), "Conectivos", TutorActivity.CONNECTIVES);
 
         List<String> chunks = service.startExercise(user(), created.getId())
@@ -110,6 +110,7 @@ class ConversationServiceTest {
         assertTrue(loaded.getUserMessages().isEmpty());
         assertEquals(1, loaded.getAgentMessages().size());
         assertEquals(List.of(TutorTexts.FIRST_EXERCISE), connectiveAgent.prompts);
+        assertTrue(TutorTexts.FIRST_EXERCISE.contains("ATIVACAO"));
         assertEquals(List.of(created.getId()), connectiveAgent.memoryIds);
         assertTrue(expansionAgent.prompts.isEmpty());
     }

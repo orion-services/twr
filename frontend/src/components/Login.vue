@@ -41,6 +41,12 @@
                 </template>
               </v-text-field>
 
+              <div class="d-flex justify-end mt-2 mb-2">
+                <v-btn variant="text" size="small" to="/recover-password">
+                  Forgot your password?
+                </v-btn>
+              </div>
+
               <v-alert v-if="error" type="error" class="mt-4">
                 {{ error }}
               </v-alert>

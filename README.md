@@ -65,7 +65,7 @@ docker compose up -d postgres redis orion-users
 
 Open <http://localhost:8080>. Quarkus builds the Vue app on startup and serves it. You do not need a separate `npm run dev` for normal use.
 
-Development chat uses local Ollama (`gemma3:latest`). Production chat uses OpenAI `gpt-4o-mini`. Development and tests embed with the local `all-MiniLM-L6-v2` model, at 384 dimensions. Production embeds with OpenAI `text-embedding-3-small`, at 1536 dimensions, in its own pgvector table. `OPENAI_API_KEY` is required in production, and in development only when you want WhatsApp audio transcribed with Whisper.
+Development chat uses local Ollama (`gemma3:latest`). Production chat uses OpenAI `gpt-6-luna`. Development and tests embed with the local `all-MiniLM-L6-v2` model, at 384 dimensions. Production embeds with OpenAI `text-embedding-3-small`, at 1536 dimensions, in its own pgvector table. `OPENAI_API_KEY` is required in production, and in development only when you want WhatsApp audio transcribed with Whisper.
 
 The Vue build runs once, when `./mvnw quarkus:dev` starts. If you edit anything under `frontend/src` while development mode is already running, stop it and start it again. Live reload watches `src/main/java` and `src/main/resources` only.
 
