@@ -36,9 +36,8 @@ resource "aws_iam_role" "github_deploy" {
       Principal = {
         Federated = local.github_oidc_provider_arn
       }
-      # TagSession is required by aws-actions/configure-aws-credentials.
-      # Match `repository` (always present) rather than `sub`, which orgs
-      # often rewrite with a custom OIDC claim template.
+      # AWS requires a scoped `sub` or `job_workflow_ref` on GitHub OIDC trust
+      # policies. TagSession is required by aws-actions/configure-aws-credentials.
       Action = [
         "sts:AssumeRoleWithWebIdentity",
         "sts:TagSession",
@@ -47,6 +46,9 @@ resource "aws_iam_role" "github_deploy" {
         StringEquals = {
           "token.actions.githubusercontent.com:aud"        = "sts.amazonaws.com"
           "token.actions.githubusercontent.com:repository" = var.github_repo
+        }
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
         }
       }
     }]
