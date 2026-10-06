@@ -24,11 +24,14 @@ package dev.orion.twr.application;
 public final class TutorTexts {
 
     /**
-     * Internal request that opens practice. It is not stored as a student message.
+     * Internal request that opens practice with the ATIVACAO greeting.
+     * It is not stored as a student message.
      */
     public static final String FIRST_EXERCISE =
-            "Apresente o primeiro exercício desta habilidade: uma frase avulsa com uma lacuna. "
-                    + "Uma questão apenas. Não entregue a resposta.";
+            "A conversa acabou de começar e o histórico está vazio. "
+                    + "Execute o estado INICIO: envie exatamente o texto de ATIVACAO desta habilidade, "
+                    + "sem acrescentar nada antes ou depois. Não apresente lacuna, exercício nem "
+                    + "pergunta-guia ainda. Espere a resposta do aluno.";
 
     /**
      * Internal request after a WhatsApp agent switch. It is not stored as a student message.

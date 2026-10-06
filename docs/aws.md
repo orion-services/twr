@@ -3,7 +3,7 @@
 Este guia cobre o deploy do twr em uma única instância EC2, rodando o app,
 Postgres+pgvector e Redis via Docker Compose, com HTTPS automático via Caddy.
 É a opção mais barata: sem RDS, ElastiCache ou ALB. Em produção o chat
-(`gpt-4o-mini`) e os embeddings (`text-embedding-3-small`) usam a API da
+(`gpt-6-luna`) e os embeddings (`text-embedding-3-small`) usam a API da
 OpenAI — não é preciso rodar Ollama nem o modelo local de embedding na
 instância (isso só é usado em desenvolvimento local).
 
@@ -132,7 +132,7 @@ Variáveis obrigatórias em `.env`:
 - `DOMAIN` — o domínio apontado no passo 2 (ex.: `twr.example.com`)
 - `ACME_EMAIL` — e-mail usado pelo Caddy no registro do Let's Encrypt
 - `POSTGRES_PASSWORD` — senha forte para o banco (compartilhado entre `twr` e `orion-users`)
-- `OPENAI_API_KEY` — usada como modelo de chat em produção (`gpt-4o-mini`); gere em
+- `OPENAI_API_KEY` — usada como modelo de chat em produção (`gpt-6-luna`); gere em
   [platform.openai.com](https://platform.openai.com/api-keys)
 - `VITE_ORION_USERS_URL` — **`https://<DOMAIN>/orion-users`** (mesmo domínio/TLS do app,
   ver `Caddyfile`). Precisa do valor final de `DOMAIN` já definido, pois é embutido no

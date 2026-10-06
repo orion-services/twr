@@ -137,7 +137,7 @@ class ChatServiceTest {
     }
 
     /**
-     * {@code \connectives} stores the specialist and asks it for the first exercise.
+     * {@code \connectives} stores the specialist and asks it for the opening greeting.
      * The command itself is not the prompt the model sees.
      */
     @Test

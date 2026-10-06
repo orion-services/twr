@@ -26,6 +26,10 @@ export function extractOrionErrorMessage(error) {
 export const EMAIL_NOT_VALIDATED_MESSAGE =
   'Please validate your email before signing in. Check your inbox for the confirmation link.';
 
+/** Shown after Orion Users generates a new password and emails it. */
+export const PASSWORD_RECOVERED_MESSAGE =
+  'A new password has been sent to your email. Check your inbox and sign in with it.';
+
 /**
  * Password login is refused until the account email is confirmed.
  * Google sign-in is left alone: the provider has already verified the address.
@@ -87,6 +91,15 @@ export const orionUsersService = {
     formData.append('password', password);
     
     const response = await orionUsersApi.post('/users/login', formData);
+    return response.data;
+  },
+
+  // Recover password: Orion generates a new password and emails it (HTTP 204).
+  async recoverPassword(email) {
+    const formData = new URLSearchParams();
+    formData.append('email', email);
+
+    const response = await orionUsersApi.post('/users/recoverPassword', formData);
     return response.data;
   },
 
